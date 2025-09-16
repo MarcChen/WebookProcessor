@@ -1,0 +1,37 @@
+name: Validate PR
+
+permissions:
+  contents: read
+  pull-requests: read
+
+on:
+  pull_request:
+    types: [labeled, unlabeled, opened, edited, synchronize, closed]
+
+jobs:
+  validate-pr:
+    name: Validate PR Labels
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Validate PR labels
+        run: |
+          # Extract labels using jq
+          labels=$(echo '${{ toJson(github.event.pull_request.labels) }}' | jq -r '.[].name')
+
+          # Check if no labels were found
+          if [ -z "$labels" ]; then
+            echo "Error: No labels found on this pull request."
+            exit 1
+          fi
+
+          # Check if any label matches major, minor, or patch
+          if echo "$labels" | grep -Eq "^(major|minor|patch)$"; then
+            echo "Valid label found: $labels"
+          else
+            echo "Error: PR must have one of the following labels: major, minor, or patch."
+            exit 1
+          fi
