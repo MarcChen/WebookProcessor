@@ -5,6 +5,11 @@ from freesms import FreeClient
 
 app = FastAPI()
 
+# Healthcheck endpoint
+@app.get("/health")
+async def healthcheck():
+    return {"status": "ok"}
+
 # Configure FreeSMS (replace with your credentials)
 freesms_client = FreeClient(user=os.getenv("FREE_ID"), password=os.getenv("FREE_SECRET"))
 
