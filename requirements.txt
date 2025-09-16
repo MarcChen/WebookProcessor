@@ -1,0 +1,4 @@
+freesms
+fastapi
+pydantic
+uvicorn
