@@ -40,11 +40,6 @@ async def webhook_listener(request: Request):
             sms_text = CalWebhookEvent.output_message(event)
             logger.info("Processed CalTriggerEvent")
             logger.debug(f"CalWebhookEvent: {event}")
-        elif event_type == "DUMMY_EVENT":
-            event = DummyWebhookEvent.model_validate(payload)
-            sms_text = DummyWebhookEvent.output_message(event)
-            logger.info("Processed DummyWebhookEvent")
-            logger.debug(f"DummyWebhookEvent: {event}")
         else:
             sms_text = payload.get("message", "No message provided")
             event = {"triggerEvent": event_type, "message": sms_text}
