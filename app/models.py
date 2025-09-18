@@ -17,6 +17,7 @@ class CalTriggerEvent(str, Enum):
 
 class CalWebhookEvent(BaseModel):
     trigger_event: CalTriggerEvent = Field(..., alias="triggerEvent")
+    created_at: str = Field(..., alias="createdAt")
     payload: Dict[str, Any]
 
     @staticmethod
