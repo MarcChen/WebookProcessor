@@ -1,7 +1,7 @@
 import os
 import logging
 from fastapi import FastAPI, Request
-from app.models import CalWebhookEvent, DummyWebhookEvent, CalTriggerEvent
+from app.models import CalWebhookEvent, CalTriggerEvent
 from freesms import FreeClient
 
 # Logging setup
