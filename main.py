@@ -23,6 +23,9 @@ async def healthcheck():
 # Configure FreeSMS (replace with your credentials)
 freesms_client = FreeClient(user=os.getenv("FREE_ID"), password=os.getenv("FREE_SECRET"))
 
+# SMS prefix constant
+SMS_PREFIX = "Hook2SMS service : \n"
+
 @app.post("/webhook")
 async def webhook_listener(request: Request):
     try:
@@ -47,6 +50,9 @@ async def webhook_listener(request: Request):
             event = {"triggerEvent": event_type, "message": sms_text}
             logger.warning(f"Unknown event type: {event_type}")
             logger.debug(f"Fallback event: {event}")
+
+        # Add prefix to SMS text
+        sms_text = f"{SMS_PREFIX}{sms_text}"
 
         freesms_client.send_sms(text=sms_text)
         logger.info("SMS sent successfully")
