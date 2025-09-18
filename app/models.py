@@ -22,5 +22,7 @@ class CalWebhookEvent(BaseModel):
 
     @staticmethod
     def output_message(event: "CalWebhookEvent") -> str:
-        # Example: customize output using event data
-        return f"Booking '{event.payload.get('title')}' created by {event.payload.get('organizer', {}).get('name')} at {event.created_at}"
+        title = event.payload.get('title', 'No Title')
+        trigger = event.trigger_event
+        organizer = event.payload.get('organizer', {}).get('name', 'Unknown')
+        return f"Booking '{title}' ({trigger}) created by {organizer}"
