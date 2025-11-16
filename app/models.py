@@ -16,17 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 class GitHubSettings(BaseSettings):
-    github_token: str = Field(..., alias="GITHUB_TOKEN")
-    repo: str = Field(..., alias="GITHUB_REPO")
-    workflow_id: str = Field(..., alias="GITHUB_WORKFLOW_ID")
-    ref: str = Field(default="main", alias="GITHUB_REF")
-    inputs: dict = Field(default_factory=dict, alias="GITHUB_INPUTS")
+    token: str
+    repo: str
+    workflow_id: str
+    ref: str = Field(default="main")
+    inputs: dict = Field(default_factory=dict)
 
-    def __init__(self, env_prefix: str = "", **data):
-        self.model_config = SettingsConfigDict(extra="ignore", env_prefix=env_prefix)
-        super().__init__(**data)
-
-    @field_validator("github_token", "repo", "workflow_id")
+    @field_validator("token", "repo", "workflow_id")
     @classmethod
     def validate_not_empty(cls, v: str) -> str:
         if not v.strip():
@@ -34,13 +30,26 @@ class GitHubSettings(BaseSettings):
         return v
 
 
+def create_github_settings(env_prefix: str) -> GitHubSettings:
+    class PrefixedGitHubSettings(GitHubSettings):
+        model_config = SettingsConfigDict(
+            extra="ignore", env_prefix=env_prefix + "GITHUB_"
+        )
+
+    return PrefixedGitHubSettings
+
+
 class WebhookProcessor(ABC, BaseModel):
     """Abstract base class for all webhook processors."""
 
     model_config = SettingsConfigDict(arbitrary_types_allowed=True)
 
-    freesms_client: FreeClient = FreeClient(
-        user=os.getenv("FREE_ID"), password=os.getenv("FREE_SECRET")
+    freesms_client: FreeClient = Field(
+        default=FreeClient(
+            user=os.getenv("FREE_ID"),
+            password=os.getenv("FREE_SECRET"),
+        ),
+        exclude=True,
     )
     sms_content: str | None = Field(
         default=None, description="Content of the SMS to be sent"
@@ -48,6 +57,7 @@ class WebhookProcessor(ABC, BaseModel):
     github_settings: GitHubSettings | None = Field(
         default=None,
         description="GitHub action settings, if set then actions will be triggered",
+        exclude=True,
     )
     enable_workflow: bool = Field(
         default=True,
@@ -75,7 +85,7 @@ class WebhookProcessor(ABC, BaseModel):
 
     def send_sms(self) -> None:
         self.freesms_client.send_sms(
-            message=SMS_PREFIX + self.sms_content,
+            text=SMS_PREFIX + self.sms_content,
         )
 
     def fire_github_action(self) -> None:
@@ -84,7 +94,7 @@ class WebhookProcessor(ABC, BaseModel):
 
         url = f"https://api.github.com/repos/{self.github_settings.repo}/actions/workflows/{self.github_settings.workflow_id}/dispatches"
         headers = {
-            "Authorization": f"Bearer {self.github_settings.github_token}",
+            "Authorization": f"token {self.github_settings.token}",
             "Accept": "application/vnd.github+json",
         }
         payload = {

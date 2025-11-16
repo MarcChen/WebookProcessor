@@ -3,7 +3,12 @@ from typing import Any, Dict, Optional
 
 from pydantic import BaseModel, Field
 
-from app.models import GitHubSettings, WebhookProcessor, register_processor
+from app.models import (
+    GitHubSettings,
+    WebhookProcessor,
+    create_github_settings,
+    register_processor,
+)
 from app.utils.strava_client import StravaClient
 
 
@@ -18,16 +23,6 @@ class StravaAspectType(str, Enum):
     DELETE = "delete"
 
 
-class StravaWebhookEvent(BaseModel):
-    object_type: StravaObjectType
-    object_id: int
-    aspect_type: StravaAspectType
-    updates: Optional[Dict[str, Any]] = None
-    owner_id: int
-    subscription_id: int
-    event_time: int
-
-
 class StravaVerification(BaseModel):
     hub_mode: str = Field(..., alias="hub.mode")
     hub_challenge: str = Field(..., alias="hub.challenge")
@@ -38,14 +33,24 @@ class StravaVerification(BaseModel):
 class StravaWebhookProcessor(WebhookProcessor):
     """Processor for Strava webhooks."""
 
-    event: StravaWebhookEvent
-    github_settings = GitHubSettings(env_prefix="STRAVA_")
+    object_type: StravaObjectType
+    object_id: int
+    aspect_type: StravaAspectType
+    updates: Optional[Dict[str, Any]] = None
+    owner_id: int
+    subscription_id: int
+    event_time: int
+
+    github_settings: GitHubSettings = Field(
+        default_factory=lambda: create_github_settings(env_prefix="STRAVA_")(),
+        exclude=True,
+    )
 
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
         """Check if the payload is from Strava and matches the expected model."""
         try:
-            StravaWebhookEvent(**payload)
+            cls.model_validate(payload)
             return True
         except Exception:
             return False
@@ -67,13 +72,37 @@ class StravaWebhookProcessor(WebhookProcessor):
     def define_sms_content(self) -> None:
         """Generate an SMS message from a Strava webhook event."""
         if (
-            self.event.object_type == StravaObjectType.ACTIVITY
-            and self.event.aspect_type == StravaAspectType.CREATE
+            self.object_type == StravaObjectType.ACTIVITY
+            and self.aspect_type == StravaAspectType.CREATE
         ):
             client = StravaClient()
-            is_virtual = client.is_virtual_ride(self.event.object_id)
+            is_virtual = client.is_virtual_ride(self.object_id)
             if is_virtual:
-                activity = client.get_activity(self.event.object_id)
+                activity = client.get_activity(self.object_id)
                 self.sms_content = f"New activity virtual ride: {activity['name']}, "
             else:
                 self.enable_workflow = False
+        else:
+            self.enable_workflow = False
+
+
+if __name__ == "__main__":
+    sample_payload = {
+        "object_type": "activity",
+        "object_id": 123456789,
+        "aspect_type": "create",
+        "owner_id": 987654321,
+        "subscription_id": 111222333,
+        "event_time": 1617181920,
+    }
+    import os
+
+    os.environ["STRAVA_GITHUB_TOKEN"] = "your_github_token"
+    os.environ["STRAVA_GITHUB_REPO"] = "your_repo"
+    os.environ["STRAVA_GITHUB_WORKFLOW_ID"] = "your_workflow_id"
+    os.environ["STRAVA_GITHUB_REF"] = "main"
+    os.environ["STRAVA_GITHUB_INPUTS"] = "{}"
+
+    processor = StravaWebhookProcessor.model_validate({"event": sample_payload})
+    processor.define_sms_content()
+    print(processor.sms_content)

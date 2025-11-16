@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from pydantic import Field
 
-from .models import WebhookProcessor, register_processor
+from app.models import WebhookProcessor, register_processor
 
 logger = logging.getLogger(__name__)
 
