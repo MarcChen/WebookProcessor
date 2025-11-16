@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: Hook2SMS
+    name: WebhookProcessor
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt

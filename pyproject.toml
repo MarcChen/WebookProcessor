@@ -1,5 +1,5 @@
 [project]
-name = "Hook2SMS"
+name = "WebhookProcessor"
 version = "0.1.0"
 description = "A simple webhook to SMS service."
 requires-python = ">=3.12"
