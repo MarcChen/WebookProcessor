@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Type
 
 import requests
+from fastapi.responses import JSONResponse
 from freesms import FreeClient
 from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -56,6 +57,14 @@ class WebhookProcessor(ABC, BaseModel):
         """Check if this processor can handle the given payload."""
         raise NotImplementedError
 
+    @classmethod
+    def handle_verification(cls, query_params: Dict[str, Any]) -> Any | None:
+        """
+        Handle webhook verification requests (e.g., Strava's GET challenge).
+        Returns the response body if the verification is handled, otherwise None.
+        """
+        return None
+
     @abstractmethod
     def define_sms_content(self) -> None:
         """Process the payload and return the message to be sent."""
@@ -83,13 +92,28 @@ class WebhookProcessor(ABC, BaseModel):
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
 
-    @abstractmethod
-    def process_workflow(self) -> None:
+    def process_workflow(self) -> JSONResponse:
         """Perform the whole workflow: process payload, send SMS, trigger actions, etc."""  # noqa: E501
         self.define_sms_content()
-        self.send_sms()
+
+        if not self.enable_workflow:
+            return JSONResponse(
+                content={"status": "Workflow disabled for this event"},
+                status_code=200,
+            )
+
+        if self.sms_content:
+            self.send_sms()
         if self.github_settings:
             self.fire_github_action()
+
+        status_message = "SMS sent" if self.sms_content else "No SMS to send"
+        return JSONResponse(
+            content={
+                "status": status_message,
+                "event": self.model_dump(exclude_none=True),
+            }
+        )
 
 
 # A registry to hold all our webhook processor classes

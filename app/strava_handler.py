@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.models import GitHubSettings, WebhookProcessor, register_processor
 from app.utils.strava_client import StravaClient
@@ -28,6 +28,12 @@ class StravaWebhookEvent(BaseModel):
     event_time: int
 
 
+class StravaVerification(BaseModel):
+    hub_mode: str = Field(..., alias="hub.mode")
+    hub_challenge: str = Field(..., alias="hub.challenge")
+    hub_verify_token: str = Field(..., alias="hub.verify_token")
+
+
 @register_processor
 class StravaWebhookProcessor(WebhookProcessor):
     """Processor for Strava webhooks."""
@@ -43,6 +49,20 @@ class StravaWebhookProcessor(WebhookProcessor):
             return True
         except Exception:
             return False
+
+    @classmethod
+    def handle_verification(cls, query_params: Dict[str, Any]) -> Any | None:
+        """Handle Strava webhook subscription verification."""
+        try:
+            verification = StravaVerification.model_validate(query_params)
+            if (
+                verification.hub_mode == "subscribe"
+                and verification.hub_verify_token == "STRAVA"
+            ):
+                return {"hub.challenge": verification.hub_challenge}
+        except Exception:
+            return None
+        return None
 
     def define_sms_content(self) -> None:
         """Generate an SMS message from a Strava webhook event."""

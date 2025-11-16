@@ -1,7 +1,7 @@
 import logging
 import os
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Response, status
 
 from app.models import WEBHOOK_PROCESSORS
 
@@ -23,6 +23,27 @@ async def healthcheck():
     return {"status": "ok"}
 
 
+@app.get("/webhook")
+async def webhook_verification(request: Request):
+    """Handle webhook verification challenges."""
+    params = dict(request.query_params)
+    logger.debug(f"Received verification request with params: {params}")
+
+    for processor_cls in WEBHOOK_PROCESSORS:
+        response_data = processor_cls.handle_verification(params)
+        if response_data is not None:
+            logger.info(
+                f"Handled verification using processor: {processor_cls.__name__}"
+            )
+            return response_data
+
+    logger.warning(f"No processor found for verification request: {params}")
+    return Response(
+        content="No suitable processor found for verification",
+        status_code=status.HTTP_400_BAD_REQUEST,
+    )
+
+
 @app.post("/webhook")
 async def webhook_listener(request: Request):
     try:
@@ -32,16 +53,25 @@ async def webhook_listener(request: Request):
         for processor_cls in WEBHOOK_PROCESSORS:
             if processor_cls.can_handle(payload):
                 logger.info(f"Using processor: {processor_cls.__name__}")
-                processor_cls.model_validate(payload)
-                processor_cls.process_workflow()
+                processor = processor_cls.model_validate(payload)
+                response = processor.process_workflow()
                 logger.info("Event processed successfully.")
                 logger.debug(f"Processed event data: {payload}")
-                return {"status": "SMS sent", "event": payload}
+                return response
 
-        return {"status": "error", "event": payload}
+        logger.error(f"No processor found for payload: {payload}")
+        return Response(
+            content='{"status": "error", "message": "No suitable processor found"}',
+            status_code=status.HTTP_400_BAD_REQUEST,
+            media_type="application/json",
+        )
     except Exception as e:
         logger.error(f"Error processing webhook: {e}", exc_info=True)
-        return {"status": "error", "detail": str(e)}
+        return Response(
+            content=f'{{"status": "error", "detail": "{str(e)}"}}',
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            media_type="application/json",
+        )
 
 
 if __name__ == "__main__":
