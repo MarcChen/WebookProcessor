@@ -2,7 +2,6 @@ import logging
 import os
 
 from fastapi import FastAPI, Request
-from freesms import FreeClient
 
 from app.models import WEBHOOK_PROCESSORS
 
@@ -24,44 +23,22 @@ async def healthcheck():
     return {"status": "ok"}
 
 
-# Configure FreeSMS (replace with your credentials)
-freesms_client = FreeClient(
-    user=os.getenv("FREE_ID"), password=os.getenv("FREE_SECRET")
-)
-
-# SMS prefix constant
-SMS_PREFIX = "Hook2SMS service : \n"
-
-
 @app.post("/webhook")
 async def webhook_listener(request: Request):
     try:
         payload = await request.json()
         logger.debug(f"Received payload: {payload}")
 
-        sms_text = f"No processor found for this event {payload.get('triggerEvent', 'unknown')}."  # noqa: E501
-        event_data = {"payload": payload}
-
         for processor_cls in WEBHOOK_PROCESSORS:
             if processor_cls.can_handle(payload):
                 logger.info(f"Using processor: {processor_cls.__name__}")
-                event = processor_cls.model_validate(payload)
-                sms_text = event.get_sms_message()
-                event_data = event.model_dump()
+                processor_cls.model_validate(payload)
+                processor_cls.process_workflow()
                 logger.info("Event processed successfully.")
-                logger.debug(f"Processed event data: {event_data}")
-                break
-        else:
-            logger.warning("No suitable processor found for payload.")
+                logger.debug(f"Processed event data: {payload}")
+                return {"status": "SMS sent", "event": payload}
 
-        # Add prefix to SMS text
-        full_sms_text = f"{SMS_PREFIX}{sms_text}"
-
-        freesms_client.send_sms(text=full_sms_text)
-        logger.info("SMS sent successfully")
-        logger.debug(f"SMS text: {full_sms_text}")
-
-        return {"status": "SMS sent", "event": event_data}
+        return {"status": "error", "event": payload}
     except Exception as e:
         logger.error(f"Error processing webhook: {e}", exc_info=True)
         return {"status": "error", "detail": str(e)}
