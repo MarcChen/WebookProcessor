@@ -33,6 +33,8 @@ class GitHubSettings(BaseSettings):
 class WebhookProcessor(ABC, BaseModel):
     """Abstract base class for all webhook processors."""
 
+    model_config = SettingsConfigDict(arbitrary_types_allowed=True)
+
     freesms_client: FreeClient = FreeClient(
         user=os.getenv("FREE_ID"), password=os.getenv("FREE_SECRET")
     )
