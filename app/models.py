@@ -1,3 +1,4 @@
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Type
@@ -10,6 +11,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # SMS prefix constant
 SMS_PREFIX = "Hook2SMS service : \n"
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubSettings(BaseSettings):
@@ -95,16 +98,21 @@ class WebhookProcessor(ABC, BaseModel):
     def process_workflow(self) -> JSONResponse:
         """Perform the whole workflow: process payload, send SMS, trigger actions, etc."""  # noqa: E501
         self.define_sms_content()
-
+        logger.debug(f"Defined SMS content: {self.sms_content}")
         if not self.enable_workflow:
+            logger.info("Workflow is disabled for this event.")
             return JSONResponse(
                 content={"status": "Workflow disabled for this event"},
                 status_code=200,
             )
 
         if self.sms_content:
+            logger.info("Sending SMS with content.")
             self.send_sms()
         if self.github_settings:
+            logger.info(
+                f"Triggering GitHub action for repo: {self.github_settings.repo}"
+            )  # noqa: E501
             self.fire_github_action()
 
         status_message = "SMS sent" if self.sms_content else "No SMS to send"
