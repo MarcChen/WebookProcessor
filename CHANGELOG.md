@@ -1,6 +1,26 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+w## [0.3.0] - 2025-11-20
+
+### Bug Fixes
+
+- Add model_config to WebhookProcessor for arbitrary types support ([`8cb169c`](https://github.com/MarcChen/WebhookProcessor/commit/8cb169cf5c0d5e8290b3572fe134523c25549328))
+- Update release command to use correct version bumping for changelog and tag ([`68b9d73`](https://github.com/MarcChen/WebhookProcessor/commit/68b9d73a65e73a5bba875d45f58913e6cfeb5dc8))
+
+### Features
+
+- Implement webhook verification handling for Strava and enhance processing workflow ([`5ef254d`](https://github.com/MarcChen/WebhookProcessor/commit/5ef254d3b051f37643157a27a7c9f58eb59f64bf))
+- Add PING event to CalTriggerEvent enumeration ([`bbdf22e`](https://github.com/MarcChen/WebhookProcessor/commit/bbdf22e61b0fa1f8c85dd9f40b0eb1a62df0d1a7))
+- Implement cooldown check for GitHub action triggers ([`159dc10`](https://github.com/MarcChen/WebhookProcessor/commit/159dc10cfb9a50a8ae2d471b01fbc84d3789a778))
+
+### Refactor
+
+- Rename project from Hook2SMS to WebhookProcessor ([`12f833f`](https://github.com/MarcChen/WebhookProcessor/commit/12f833f8876f922a9ec403164e2f713bfd2a37ea))
+- Update import statements and enhance GitHubSettings initialization ([`888c83e`](https://github.com/MarcChen/WebhookProcessor/commit/888c83e909af1caa41231c4fa1de834f3c68d1d8))
+- Remove register_processor decorator and create registry for webhook processors ([`e52bc8b`](https://github.com/MarcChen/WebhookProcessor/commit/e52bc8b5666daf3d61c52f939f17b9f0d39e3ecc))
+
+
 w## [0.2.0] - 2025-11-16
 
 ### Bug Fixes
