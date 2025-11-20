@@ -1,6 +1,7 @@
 import logging
 import os
 from abc import ABC, abstractmethod
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, Type
 
 import requests
@@ -21,6 +22,9 @@ class GitHubSettings(BaseSettings):
     workflow_id: str
     ref: str = Field(default="main")
     inputs: dict = Field(default_factory=dict)
+    cooldown_minutes: int = Field(
+        default=3, description="Minimum time in minutes between workflow triggers"
+    )
 
     @field_validator("token", "repo", "workflow_id")
     @classmethod
@@ -88,9 +92,59 @@ class WebhookProcessor(ABC, BaseModel):
             text=SMS_PREFIX + self.sms_content,
         )
 
+    def _check_cooldown(self) -> bool:
+        """
+        Internal function to check if the last run was recent.
+        Returns True if we should trigger (cooldown passed), False otherwise.
+        """
+        url = f"https://api.github.com/repos/{self.github_settings.repo}/actions/workflows/{self.github_settings.workflow_id}/runs"
+
+        headers = {
+            "Authorization": f"token {self.github_settings.token}",
+            "Accept": "application/vnd.github+json",
+        }
+
+        params = {"per_page": 1, "exclude_pull_requests": str(True).lower()}
+
+        try:
+            response = requests.get(url, headers=headers, params=params)
+            response.raise_for_status()
+            data = response.json()
+
+            if not data.get("workflow_runs"):
+                logger.debug("No previous workflow runs found. Proceeding.")
+                return True
+
+            last_run = data["workflow_runs"][0]
+            created_at_str = last_run["created_at"].replace("Z", "+00:00")
+            last_run_time = datetime.fromisoformat(created_at_str)
+
+            now = datetime.now(timezone.utc)
+
+            time_diff = now - last_run_time
+            cooldown = timedelta(minutes=self.github_settings.cooldown_minutes)
+
+            if time_diff < cooldown:
+                logger.warning(
+                    f"Skipping GitHub Action: Last run was {time_diff.seconds // 60}m {time_diff.seconds % 60}s ago "  # noqa: E501
+                    f"(Cooldown is {self.github_settings.cooldown_minutes}m)"
+                )
+                return False
+
+            logger.info(f"Cooldown check passed. Last run was {time_diff} ago.")
+            return True
+
+        except Exception as e:
+            logger.error(
+                f"Failed to check workflow cooldown: {e}. Defaulting to trigger."
+            )
+            return True
+
     def fire_github_action(self) -> None:
-        """Trigger any GitHub actions with provided arguments if necessary."""
-        # Example implementation: send a POST request to GitHub Actions workflow_dispatch endpoint  # noqa: E501
+        """Trigger any GitHub actions if cooldown has passed."""
+
+        if not self._check_cooldown():
+            return
 
         url = f"https://api.github.com/repos/{self.github_settings.repo}/actions/workflows/{self.github_settings.workflow_id}/dispatches"
         headers = {
