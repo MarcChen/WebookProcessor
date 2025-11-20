@@ -177,19 +177,19 @@ wheels = [
 
 [[package]]
 name = "git-cliff"
-version = "2.2.2"
+version = "2.10.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/2d/3f/d008fee51d674c6461671d21e04cc619065a46a5c11e0704f15f54525eaf/git_cliff-2.2.2.tar.gz", hash = "sha256:1ff34e6659cac3f9fa01645e1edf5bce333d22738a6579be7b8e79c636a6c25f", size = 62512, upload-time = "2024-05-11T20:19:58.959Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/4e/f6/1773f64124dad5205b8573a33f7f8707440b208b72f2c61b3c5a057465e7/git_cliff-2.10.1.tar.gz", hash = "sha256:2f288e732584e2aff65e86990a12ffeb58898931db96f9b219e016335492da97", size = 94914, upload-time = "2025-09-21T16:37:09.317Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a2/43/351210bd946794a0e393ea4c05f744e63d05f475672c6cded6f27464ad03/git_cliff-2.2.2-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:3a3af4cb34b11875c9c2939d5eae41def33e1cc2bb837069ab61ac2bdec47ad2", size = 5743419, upload-time = "2024-05-11T20:19:41.435Z" },
-    { url = "https://files.pythonhosted.org/packages/f3/71/52b13032ee02fab80df7b08db2df4b43271a8e7d65b7fddf58e9531c47c9/git_cliff-2.2.2-py3-none-macosx_11_0_arm64.whl", hash = "sha256:8f631e193ea668d4527cf50a258a8e1597058e46021e3ec44a33b4c343e0fee9", size = 5354619, upload-time = "2024-05-11T20:19:43.704Z" },
-    { url = "https://files.pythonhosted.org/packages/44/23/df8624071271788df6e65967eb4115ccf40f2226b7d932ecf70f0f805f0c/git_cliff-2.2.2-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:65e7aac3357c75aaaccfe737a38772cada41d734ca86c2ca496ca60fa1e3f2ee", size = 5688540, upload-time = "2024-05-11T20:19:45.954Z" },
-    { url = "https://files.pythonhosted.org/packages/08/b4/98a94d323754028232d8fa302580eb1706406efce000dba6b57004552b6d/git_cliff-2.2.2-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a59730f49e212c4583a967e9ddea7f6c507cee01d461f4c4602a366999e3be73", size = 6154624, upload-time = "2024-05-11T20:19:48.143Z" },
-    { url = "https://files.pythonhosted.org/packages/a5/3f/488a77e322f15b8a4132564272c683e2b2a41249d4d31e04a9aa1d5568c4/git_cliff-2.2.2-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:0f411a58df635ce779d0048db19d347a0eeb37f3d061e08335659c587518b4cc", size = 5743907, upload-time = "2024-05-11T20:19:50.686Z" },
-    { url = "https://files.pythonhosted.org/packages/1e/d1/e68a23bb8c648ce047b0c4f349e801da9cb8a7ea595765044c35dba729e0/git_cliff-2.2.2-py3-none-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:6def651f6c44b527f33822c8e063383f2596eab7f0796d06213a31c22302d2c4", size = 5847043, upload-time = "2024-05-11T20:19:52.33Z" },
-    { url = "https://files.pythonhosted.org/packages/e7/34/4e629e387354b92cae72183b5a03e47c116e3f187a9ec174fffc786e60ce/git_cliff-2.2.2-py3-none-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:aa3888fc975a0d55a8434ef0ad0d481e918ad761c191a64b29f3ed9337843538", size = 6361514, upload-time = "2024-05-11T20:19:54.214Z" },
-    { url = "https://files.pythonhosted.org/packages/b6/63/af603bd2232109bfbd6eba267265fd74817088a0eaea02c2d3b9e24c860b/git_cliff-2.2.2-py3-none-win32.whl", hash = "sha256:96155b457dec726dcebed2c5a3fecb3994c7991a4ce0779515907fd53945c13d", size = 5391322, upload-time = "2024-05-11T20:19:55.838Z" },
-    { url = "https://files.pythonhosted.org/packages/cf/61/4870b2f6650aa1ef008239ff4f1a6bef5cc2c26c243ba95667e5cb956de2/git_cliff-2.2.2-py3-none-win_amd64.whl", hash = "sha256:fa5017b3e204f5cc7c7b4442a082fa9ae6f40736e55353649fcc12e6bb7632be", size = 6127098, upload-time = "2024-05-11T20:19:57.473Z" },
+    { url = "https://files.pythonhosted.org/packages/c6/d5/3fc3157ec6895857264bcbf10f5688d14a35866c253aabb4f8004152b545/git_cliff-2.10.1-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:49e5808150d526ad6b728313b77636fe962c7ee6729409f2d42aa6cbe323506b", size = 6684538, upload-time = "2025-09-21T16:36:55.377Z" },
+    { url = "https://files.pythonhosted.org/packages/05/3d/4c5be6ba5bc4e25b0b97c92582d18694b7edca8882b66781de6681eaf031/git_cliff-2.10.1-py3-none-macosx_11_0_arm64.whl", hash = "sha256:973962f2486d33ddbb624aa2d2e2d370e03721a164c471601736afce75e0935d", size = 6201154, upload-time = "2025-09-21T16:36:57.116Z" },
+    { url = "https://files.pythonhosted.org/packages/41/6d/99dddf11138fc5462122061b0d569b424d1a720c7efd7c0fa69fe549adee/git_cliff-2.10.1-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:704ff6cea09fd90dd524a8235143897a2d1c8ef9fb045070275f4cf6b0040616", size = 6625505, upload-time = "2025-09-21T16:36:58.893Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/bc/88c1b3110f391374f03edb46b0c04bf2da2debf4e3082330b43ed1237629/git_cliff-2.10.1-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9d72c0bf314014f30ec4287a2dee9f1a14f4c67f73b75991684391e2a98d9b9b", size = 7078045, upload-time = "2025-09-21T16:37:00.277Z" },
+    { url = "https://files.pythonhosted.org/packages/5e/b6/c1a645e0b2c91a7e9655fc760ee46c4cd27c867225730359b518726e5667/git_cliff-2.10.1-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:49157fdb81384d4282f918a5a533418c943aae1cfc3cde572adb95cfabcb55a8", size = 6653090, upload-time = "2025-09-21T16:37:01.896Z" },
+    { url = "https://files.pythonhosted.org/packages/44/a2/b086b8d213be76e8120e2eb7c9d79abd1fa15b3c0880891054f306b49b6e/git_cliff-2.10.1-py3-none-manylinux_2_5_i686.manylinux1_i686.whl", hash = "sha256:36e3537450fb2c295fa8b1b6400c72a166022241de294c24c7bee3ae43284a78", size = 6916357, upload-time = "2025-09-21T16:37:03.61Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/50/946ae38005978fbd648167f60cbac4b18bb35e890ad552a341c3b4ab0e47/git_cliff-2.10.1-py3-none-manylinux_2_5_x86_64.manylinux1_x86_64.whl", hash = "sha256:56f54211a51a8ce3208f3871ee09899607ec539d62aba900b23a53b0be442591", size = 7315406, upload-time = "2025-09-21T16:37:04.988Z" },
+    { url = "https://files.pythonhosted.org/packages/45/a0/e90f15be30947f02a154b77ce6fc61dca6369bda36fbe7f164462c58dfd4/git_cliff-2.10.1-py3-none-win32.whl", hash = "sha256:c121069d52136889c7e2f8a93ed878f5fdffe5707f76a0badc098c5b6b71fc97", size = 6201041, upload-time = "2025-09-21T16:37:06.532Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/a4/c74de9684cf779bae2c426eda684a11a1e8dc5c1b21191954843168a2d2d/git_cliff-2.10.1-py3-none-win_amd64.whl", hash = "sha256:893f595bfbea536668eaeb7959025982a577d37ccfab4f6cbc0b9d6e265da93f", size = 7002881, upload-time = "2025-09-21T16:37:07.85Z" },
 ]
 
 [[package]]
@@ -200,38 +200,6 @@ sdist = { url = "https://files.pythonhosted.org/packages/01/ee/02a2c011bdab74c6f
 wheels = [
     { url = "https://files.pythonhosted.org/packages/04/4b/29cac41a4d98d144bf5f6d33995617b185d14b22401f75ca86f384e87ff1/h11-0.16.0-py3-none-any.whl", hash = "sha256:63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86", size = 37515, upload-time = "2025-04-24T03:35:24.344Z" },
 ]
-
-[[package]]
-name = "hook2sms"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "fastapi" },
-    { name = "freesms" },
-    { name = "pydantic" },
-    { name = "pydantic-settings" },
-    { name = "uvicorn" },
-]
-
-[package.optional-dependencies]
-dev = [
-    { name = "git-cliff" },
-    { name = "pre-commit" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", specifier = "==0.121.2" },
-    { name = "freesms", specifier = "==0.3.0" },
-    { name = "git-cliff", marker = "extra == 'dev'", specifier = "==2.2.2" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = "==4.4.0" },
-    { name = "pydantic", specifier = "==2.12.4" },
-    { name = "pydantic-settings", specifier = "==2.12.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.14.5" },
-    { name = "uvicorn", specifier = "==0.38.0" },
-]
-provides-extras = ["dev"]
 
 [[package]]
 name = "identify"
@@ -559,3 +527,35 @@ sdist = { url = "https://files.pythonhosted.org/packages/20/28/e6f1a6f655d620846
 wheels = [
     { url = "https://files.pythonhosted.org/packages/79/0c/c05523fa3181fdf0c9c52a6ba91a23fbf3246cc095f26f6516f9c60e6771/virtualenv-20.35.4-py3-none-any.whl", hash = "sha256:c21c9cede36c9753eeade68ba7d523529f228a403463376cf821eaae2b650f1b", size = 6005095, upload-time = "2025-10-29T06:57:37.598Z" },
 ]
+
+[[package]]
+name = "webhookprocessor"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "fastapi" },
+    { name = "freesms" },
+    { name = "pydantic" },
+    { name = "pydantic-settings" },
+    { name = "uvicorn" },
+]
+
+[package.optional-dependencies]
+dev = [
+    { name = "git-cliff" },
+    { name = "pre-commit" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", specifier = "==0.121.2" },
+    { name = "freesms", specifier = "==0.3.0" },
+    { name = "git-cliff", marker = "extra == 'dev'", specifier = "==2.10.1" },
+    { name = "pre-commit", marker = "extra == 'dev'", specifier = "==4.4.0" },
+    { name = "pydantic", specifier = "==2.12.4" },
+    { name = "pydantic-settings", specifier = "==2.12.0" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = "==0.14.5" },
+    { name = "uvicorn", specifier = "==0.38.0" },
+]
+provides-extras = ["dev"]
