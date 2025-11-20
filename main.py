@@ -3,6 +3,7 @@ import os
 
 from fastapi import FastAPI, Request, Response, status
 
+from app.notion_handler import NotionWebhookProcessor
 from app.registry import WEBHOOK_PROCESSORS
 
 # Logging setup
@@ -52,6 +53,9 @@ async def webhook_listener(request: Request):
 
         for processor_cls in WEBHOOK_PROCESSORS:
             if processor_cls.can_handle(payload):
+                if processor_cls == NotionWebhookProcessor:
+                    logging.info("Trying to setup Notion webhook secret")
+                    processor_cls.handle_verification(dict(request.headers))
                 logger.info(f"Using processor: {processor_cls.__name__}")
                 processor = processor_cls.model_validate(payload)
                 response = processor.process_workflow()
