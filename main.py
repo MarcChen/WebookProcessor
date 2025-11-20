@@ -3,8 +3,7 @@ import os
 
 from fastapi import FastAPI, Request, Response, status
 
-from app import cal_com_handler, strava_handler  # noqa: F401
-from app.models import WEBHOOK_PROCESSORS
+from app.registry import WEBHOOK_PROCESSORS
 
 # Logging setup
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()

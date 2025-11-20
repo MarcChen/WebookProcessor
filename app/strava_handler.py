@@ -7,7 +7,6 @@ from app.models import (
     GitHubSettings,
     WebhookProcessor,
     create_github_settings,
-    register_processor,
 )
 from app.utils.strava_client import StravaClient
 
@@ -29,7 +28,6 @@ class StravaVerification(BaseModel):
     hub_verify_token: str = Field(..., alias="hub.verify_token")
 
 
-@register_processor
 class StravaWebhookProcessor(WebhookProcessor):
     """Processor for Strava webhooks."""
 

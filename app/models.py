@@ -2,7 +2,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Type
+from typing import Any, Dict
 
 import requests
 from fastapi.responses import JSONResponse
@@ -186,13 +186,3 @@ class WebhookProcessor(ABC, BaseModel):
                 "event": self.model_dump(exclude_none=True),
             }
         )
-
-
-# A registry to hold all our webhook processor classes
-WEBHOOK_PROCESSORS: list[Type[WebhookProcessor]] = []
-
-
-def register_processor(cls: Type[WebhookProcessor]) -> Type[WebhookProcessor]:
-    """A decorator to register new webhook processor classes."""
-    WEBHOOK_PROCESSORS.append(cls)
-    return cls

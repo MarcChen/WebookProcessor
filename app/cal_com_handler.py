@@ -4,7 +4,7 @@ from typing import Any, Dict
 
 from pydantic import Field
 
-from app.models import WebhookProcessor, register_processor
+from app.models import WebhookProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +24,6 @@ class CalTriggerEvent(str, Enum):
     PING = "PING"
 
 
-@register_processor
 class CalWebhookEvent(WebhookProcessor):
     trigger_event: CalTriggerEvent = Field(..., alias="triggerEvent")
     created_at: str = Field(..., alias="createdAt")

@@ -1,0 +1,11 @@
+from typing import Type
+
+from app.cal_com_handler import CalWebhookEvent
+from app.models import WebhookProcessor
+from app.strava_handler import StravaWebhookProcessor
+
+# A registry to hold all our webhook processor classes
+WEBHOOK_PROCESSORS: list[Type[WebhookProcessor]] = [
+    CalWebhookEvent,
+    StravaWebhookProcessor,
+]
