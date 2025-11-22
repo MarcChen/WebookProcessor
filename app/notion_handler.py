@@ -1,12 +1,11 @@
 import hashlib
 import hmac
 import logging
-import os
 from enum import Enum
 from typing import Any, Dict, Optional
 
-from fastapi import requests
-from pydantic import BaseModel, Field, ValidationError
+import requests
+from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from app.models import GitHubSettings, WebhookProcessor, create_github_settings
@@ -90,13 +89,21 @@ class NotionWebhookProcessor(WebhookProcessor):
     entity_id: str
 
     # Settings
-    notion_settings: NotionSettings = Field(
-        default_factory=NotionSettings, exclude=True
-    )
     github_settings: GitHubSettings = Field(
-        default_factory=lambda: create_github_settings(env_prefix="NOTION_")(),
+        default_factory=lambda: create_github_settings(
+            env_prefix="NOTION_", cooldown_minutes=0
+        )(),
         exclude=True,
     )
+
+    # Override model_validate to map the flat payload to our internal fields
+    @classmethod
+    def model_validate(cls, obj: Any) -> "NotionWebhookProcessor":
+        # Parse the inner event data
+        payload = NotionWebhookPayload.model_validate(obj.get("event", obj))
+
+        instance = cls(event_type=payload.type, entity_id=payload.entity.id)
+        return instance
 
     @classmethod
     def verify_signature(
@@ -141,6 +148,7 @@ class NotionWebhookProcessor(WebhookProcessor):
         """
         Synchronously fetches the page properties from Notion API.
         """
+        logger.debug(f"Fetching Notion page details for page ID: {page_id}")
         url = f"https://api.notion.com/v1/pages/{page_id}"
         headers = {
             "Authorization": f"Bearer {api_token}",
@@ -157,101 +165,86 @@ class NotionWebhookProcessor(WebhookProcessor):
 
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
-        """
-        Logic:
-        1. Validate basic structure.
-        2. Filter for PAGE_CREATED or PAGE_UPDATED.
-        3. Call API to check if 'Today' column is checked.
-        """
-        try:
-            # 1. Structure Check
-            model = NotionWebhookPayload.model_validate(payload)
+        model = NotionWebhookPayload.model_validate(payload)
 
-            # 2. Type Check
-            valid_types = [
-                NotionEventType.PAGE_CREATED.value,
-                NotionEventType.PAGE_UPDATED.value,
-                NotionEventType.PAGE_CONTENT_UPDATED.value,
-            ]
+        # 2. Type Check
+        valid_types = [
+            NotionEventType.PAGE_CREATED.value,
+            NotionEventType.PAGE_UPDATED.value,
+            NotionEventType.PAGE_CONTENT_UPDATED.value,
+        ]
 
-            if model.type not in valid_types or model.entity.type != "page":
-                return False
+        if model.type not in valid_types or model.entity.type != "page":
+            return False
+        else:
+            return True
 
-            # 3. The "Today" Column Check (API Call)
-            if not cls.notion_settings.api_token:
-                logger.error("Missing NOTION_API_TOKEN cannot verify 'Today' status.")
-                return False
+    def should_enable_workflow(self, payload: Dict[str, Any]) -> bool:
+        model = NotionWebhookPayload.model_validate(payload)
+        notion_settings = NotionSettings()
 
-            page_data = cls._fetch_page_details(
-                model.entity.id, cls.notion_settings.api_token
+        # The "Today" Column Check (API Call)
+        if not notion_settings.api_token:
+            logger.error("Missing NOTION_API_TOKEN cannot verify 'Today' status.")
+            return False
+
+        page_data = self._fetch_page_details(model.entity.id, notion_settings.api_token)
+
+        if not page_data:
+            return False
+
+        # Check specifically for the 'Today' property
+        if page_data.properties.Today and page_data.properties.Today.checkbox is True:
+            logger.info(
+                f"Notion Page {model.entity.id} has 'Today' checked. Accepting."
             )
+            self.enable_workflow = True
 
-            if not page_data:
-                return False
+            # Extract page title if available
+            page_title = "Unknown Title"
+            if hasattr(page_data.properties, "Name") and page_data.properties.Name:
+                # Notion title properties have a specific structure
+                title_prop = getattr(page_data.properties, "Name", None)
+                if title_prop and hasattr(title_prop, "title") and title_prop.title:
+                    page_title = title_prop.title[0].get("plain_text", "Unknown Title")
 
-            # Check specifically for the 'Today' property
-            if (
-                page_data.properties.Today
-                and page_data.properties.Today.checkbox is True
-            ):
-                logger.info(
-                    f"Notion Page {model.entity.id} has 'Today' checked. Accepting."
-                )
-                return True
-            else:
-                logger.debug(
-                    f"Notion Page {model.entity.id} 'Today' is False/Missing. Ignoring."
-                )
-                return False
+            # Set workflow inputs for GitHub Action
+            self.github_settings.inputs = {
+                "page_id": model.entity.id,
+                "page_title": page_title,
+            }
 
-        except ValidationError:
-            # Not a Notion payload
-            return False
-        except Exception as e:
-            logger.error(f"Error in Notion can_handle: {e}")
-            return False
-
-    def define_sms_content(self) -> None:
-        self.sms_content = None
-
-    # Override model_validate to map the flat payload to our internal fields
-    @classmethod
-    def model_validate(cls, obj: Any) -> "NotionWebhookProcessor":
-        # Parse the inner event data
-        payload = NotionWebhookPayload.model_validate(obj.get("event", obj))
-
-        instance = cls(event_type=payload.type, entity_id=payload.entity.id)
-        return instance
+        else:
+            logger.debug(
+                f"Notion Page {model.entity.id} 'Today' is False/Missing. Ignoring."
+            )
+            self.enable_workflow = False
 
 
 if __name__ == "__main__":
-    # --- Test Mock ---
-    import os
-
-    # Mock Env
-    os.environ["NOTION_WEBHOOK_SECRET"] = "secret_123"
-    os.environ["NOTION_API_TOKEN"] = "secret_api_token"
-    os.environ["NOTION_GITHUB_TOKEN"] = "gh_token"
-    os.environ["NOTION_GITHUB_REPO"] = "my/repo"
-    os.environ["NOTION_GITHUB_WORKFLOW_ID"] = "123"
-
-    # Mock Payload (What Notion sends)
-    sample_payload = {
-        "type": "page.properties_updated",
-        "timestamp": "2024-12-05T23:57:05.379Z",
-        "entity": {"id": "1782edd6-a853-4d4a-b02c-9c8c16f28e53", "type": "page"},
+    logging.basicConfig(level=logging.DEBUG)
+    notion_payload = {
+        "id": "905251bb-a324-4814-946a-bbf2fba8bd9f",
+        "timestamp": "2025-11-22T14:47:01.525Z",
+        "workspace_id": "c8cdf654-652d-4606-8209-78ad7631275f",
+        "workspace_name": "Kems's Notion",
+        "subscription_id": "2b1d872b-594c-81bd-a29a-0099adf0bc92",
+        "integration_id": "15ed872b-594c-811c-ab1a-003763100ec5",
+        "authors": [{"id": "6f842ce2-9cc9-405f-979d-85a0c3672d5f", "type": "person"}],
+        "attempt_number": 2,
+        "api_version": "2025-09-03",
+        "entity": {"id": "2b319fda-9f9d-80d8-94b9-ffb360c9d095", "type": "page"},
+        "type": "page.created",
         "data": {
-            # Notion sends limited data here
+            "parent": {
+                "id": "2614254e-32d1-4d5e-9d91-00b029fb31bb",
+                "type": "database",
+                "data_source_id": "4908fae5-c779-4b48-8b9e-36033376ab04",
+            }
         },
     }
 
-    # NOTE: In a real run, can_handle will fail here because it tries
-    # to hit the real Notion API with a fake ID/Token.
-    # But this demonstrates the instantiation.
-
-    if NotionWebhookProcessor.can_handle(sample_payload):
-        processor = NotionWebhookProcessor.model_validate(sample_payload)
-        processor.define_sms_content()
+    if NotionWebhookProcessor.can_handle(notion_payload):
+        processor = NotionWebhookProcessor.model_validate(notion_payload)
+        processor.process_workflow(notion_payload)
         print(processor.sms_content)
-    else:
-        print("Payload rejected (likely due to API check failure in this mock script)")

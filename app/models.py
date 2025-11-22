@@ -34,11 +34,13 @@ class GitHubSettings(BaseSettings):
         return v
 
 
-def create_github_settings(env_prefix: str) -> GitHubSettings:
+def create_github_settings(env_prefix: str, cooldown_minutes: int) -> GitHubSettings:
     class PrefixedGitHubSettings(GitHubSettings):
         model_config = SettingsConfigDict(
             extra="ignore", env_prefix=env_prefix + "GITHUB_"
         )
+
+        cooldown_minutes: int = Field(default_factory=lambda: cooldown_minutes)
 
     return PrefixedGitHubSettings
 
