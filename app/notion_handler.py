@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import logging
+from datetime import timedelta
 from enum import Enum
 from typing import Any, Dict, Optional
 
@@ -91,7 +92,7 @@ class NotionWebhookProcessor(WebhookProcessor):
     # Settings
     github_settings: GitHubSettings = Field(
         default_factory=lambda: create_github_settings(
-            env_prefix="NOTION_", cooldown_minutes=0
+            env_prefix="NOTION_", cooldown=timedelta(seconds=5)
         )(),
         exclude=True,
     )

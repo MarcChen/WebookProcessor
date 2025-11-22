@@ -22,8 +22,9 @@ class GitHubSettings(BaseSettings):
     workflow_id: str
     ref: str = Field(default="main")
     inputs: dict = Field(default_factory=dict)
-    cooldown_minutes: int = Field(
-        default=3, description="Minimum time in minutes between workflow triggers"
+    cooldown: timedelta = Field(
+        default=timedelta(minutes=3),
+        description="Minimum time between workflow triggers",
     )
 
     @field_validator("token", "repo", "workflow_id")
@@ -34,13 +35,13 @@ class GitHubSettings(BaseSettings):
         return v
 
 
-def create_github_settings(env_prefix: str, cooldown_minutes: int) -> GitHubSettings:
+def create_github_settings(env_prefix: str, cooldown: timedelta) -> GitHubSettings:
     class PrefixedGitHubSettings(GitHubSettings):
         model_config = SettingsConfigDict(
             extra="ignore", env_prefix=env_prefix + "GITHUB_"
         )
 
-        cooldown_minutes: int = Field(default_factory=lambda: cooldown_minutes)
+        cooldown: timedelta = Field(default_factory=lambda: cooldown)
 
     return PrefixedGitHubSettings
 
@@ -127,12 +128,16 @@ class WebhookProcessor(ABC, BaseModel):
             now = datetime.now(timezone.utc)
 
             time_diff = now - last_run_time
-            cooldown = timedelta(minutes=self.github_settings.cooldown_minutes)
+            cooldown = self.github_settings.cooldown
 
             if time_diff < cooldown:
+                total_seconds = int(time_diff.total_seconds())
+                minutes = total_seconds // 60
+                seconds = total_seconds % 60
+                cooldown_str = f"{int(cooldown.total_seconds() // 60)}m {int(cooldown.total_seconds() % 60)}s"  # noqa: E501
                 logger.warning(
-                    f"Skipping GitHub Action: Last run was {time_diff.seconds // 60}m {time_diff.seconds % 60}s ago "  # noqa: E501
-                    f"(Cooldown is {self.github_settings.cooldown_minutes}m)"
+                    f"Skipping GitHub Action: Last run was {minutes}m {seconds}s ago "
+                    f"(Cooldown is {cooldown_str})"
                 )
                 return False
 
