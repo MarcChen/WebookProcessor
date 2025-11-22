@@ -32,21 +32,63 @@ class CalWebhookEvent(WebhookProcessor):
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
         """Check if the payload is from Cal.com by looking for 'triggerEvent'."""
-        logger.debug(
-            f"Checking if payload can be handled by CalWebhookEvent: {payload}"
-        )
         return (
             "triggerEvent" in payload
             and payload["triggerEvent"] in CalTriggerEvent.__members__
         )
 
-    def define_sms_content(self) -> None:
-        """Defines the SMS content based on the Cal.com event trigger."""
+    def should_enable_workflow(self, payload: Dict[str, Any]) -> None:
         if self.trigger_event == CalTriggerEvent.PING:
-            self.sms_content = "Test ping event from Cal.com"
-            return
-        title = self.payload.get("title", "No Title")
-        organizer = self.payload.get("organizer", {}).get("name", "Unknown")
-        self.sms_content = (
-            f"Booking '{title}' ({self.trigger_event.value}) created by {organizer}"
-        )
+            self.enable_workflow = False
+            logger.info("Disabling workflow for PING event.")
+        else:
+            self.enable_workflow = True
+            title = self.payload.get("title", "No Title")
+            organizer = self.payload.get("organizer", {}).get("name", "Unknown")
+            self.sms_content = (
+                f"Booking '{title}' ({self.trigger_event.value}) created by {organizer}"
+            )
+
+
+if __name__ == "__main__":
+    sample_payload = {
+        "triggerEvent": "BOOKING_CREATED",
+        "createdAt": "2024-10-01T12:00:00Z",
+        "payload": {
+            "title": "Consultation Meeting",
+            "organizer": {"name": "John Doe"},
+        },
+    }
+
+    processor = CalWebhookEvent.model_validate(sample_payload)
+    processor.process_workflow(sample_payload)
+    print(f"SMS Content: {processor.sms_content}")
+    sample_ping_payload = {
+        "triggerEvent": "PING",
+        "createdAt": "2025-11-22T14:40:26.232Z",
+        "payload": {
+            "type": "Test",
+            "title": "Test trigger event",
+            "startTime": "2025-11-22T14:40:26.232Z",
+            "endTime": "2025-11-22T14:40:26.232Z",
+            "attendees": [
+                {
+                    "email": "jdoe@example.com",
+                    "name": "John Doe",
+                    "timeZone": "Europe/London",
+                    "language": {"locale": "en"},
+                    "utcOffset": 0,
+                }
+            ],
+            "organizer": {
+                "name": "Cal",
+                "email": "no-reply@cal.com",
+                "timeZone": "Europe/London",
+                "language": {"locale": "en"},
+                "utcOffset": 0,
+            },
+        },
+    }
+    processor_ping = CalWebhookEvent.model_validate(sample_ping_payload)
+    processor_ping.process_workflow(sample_ping_payload)
+    print(f"SMS Content: {processor_ping.sms_content}")

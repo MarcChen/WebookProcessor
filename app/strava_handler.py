@@ -67,40 +67,49 @@ class StravaWebhookProcessor(WebhookProcessor):
             return None
         return None
 
-    def define_sms_content(self) -> None:
-        """Generate an SMS message from a Strava webhook event."""
+    def should_enable_workflow(self, payload: Dict[str, Any]) -> None:
         if (
             self.object_type == StravaObjectType.ACTIVITY
             and self.aspect_type == StravaAspectType.CREATE
         ):
             client = StravaClient()
             is_virtual = client.is_virtual_ride(self.object_id)
-            if is_virtual:
+            if not is_virtual:
+                self.enable_workflow = False
+            else:
+                self.enable_workflow = True
                 activity = client.get_activity(self.object_id)
                 self.sms_content = f"New activity virtual ride: {activity['name']}, "
-            else:
-                self.enable_workflow = False
         else:
             self.enable_workflow = False
 
 
 if __name__ == "__main__":
-    sample_payload = {
+    sample_update_payload = {
+        "aspect_type": "update",
+        "event_time": 1763821976,
+        "object_id": 16457839651,
         "object_type": "activity",
-        "object_id": 123456789,
-        "aspect_type": "create",
-        "owner_id": 987654321,
-        "subscription_id": 111222333,
-        "event_time": 1617181920,
+        "owner_id": 142429376,
+        "subscription_id": 315652,
+        "updates": {"private": "true", "visibility": "only_me"},
     }
-    import os
+    strava_create_payload = {
+        "aspect_type": "create",
+        "event_time": 1763662369,
+        "object_id": 16517081124,
+        "object_type": "activity",
+        "owner_id": 142429376,
+        "subscription_id": 315652,
+        "updates": {},
+    }
 
-    os.environ["STRAVA_GITHUB_TOKEN"] = "your_github_token"
-    os.environ["STRAVA_GITHUB_REPO"] = "your_repo"
-    os.environ["STRAVA_GITHUB_WORKFLOW_ID"] = "your_workflow_id"
-    os.environ["STRAVA_GITHUB_REF"] = "main"
-    os.environ["STRAVA_GITHUB_INPUTS"] = "{}"
+    processor = StravaWebhookProcessor.model_validate(sample_update_payload)
+    response = processor.process_workflow(sample_update_payload)
+    print(response)
+    print(f"SMS Content: {processor.sms_content}")
 
-    processor = StravaWebhookProcessor.model_validate({"event": sample_payload})
-    processor.define_sms_content()
-    print(processor.sms_content)
+    processor = StravaWebhookProcessor.model_validate(strava_create_payload)
+    response = processor.process_workflow(strava_create_payload)
+    print(response)
+    print(f"SMS Content: {processor.sms_content}")

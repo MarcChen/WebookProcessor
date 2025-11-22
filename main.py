@@ -3,13 +3,11 @@ import os
 
 from fastapi import FastAPI, Request, Response, status
 
-from app.notion_handler import NotionWebhookProcessor
 from app.registry import WEBHOOK_PROCESSORS
 
 # Logging setup
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    level=logging.DEBUG,
     format="%(asctime)s [%(levelname)s] %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -52,15 +50,19 @@ async def webhook_listener(request: Request):
         logger.debug(f"Received payload: {payload}")
 
         for processor_cls in WEBHOOK_PROCESSORS:
+            logger.debug(f"Checking processor: {processor_cls.__name__}")
             if processor_cls.can_handle(payload):
-                if processor_cls == NotionWebhookProcessor:
-                    logging.info("Trying to setup Notion webhook secret")
-                    processor_cls.handle_verification(dict(request.headers))
                 logger.info(f"Using processor: {processor_cls.__name__}")
                 processor = processor_cls.model_validate(payload)
-                response = processor.process_workflow()
+                response = processor.process_workflow(payload)
                 logger.info("Event processed successfully.")
                 logger.debug(f"Processed event data: {payload}")
+                return response
+            elif processor_cls.handle_verification(payload) is not None:
+                logger.info(
+                    f"Handled verification using processor: {processor_cls.__name__}"
+                )
+                response = processor_cls.handle_verification(payload)
                 return response
 
         logger.error(f"No processor found for payload: {payload}")
@@ -88,5 +90,5 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port,
         reload=True,
-        log_level=LOG_LEVEL.lower(),
+        log_level=logging.DEBUG,
     )

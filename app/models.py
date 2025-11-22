@@ -75,7 +75,7 @@ class WebhookProcessor(ABC, BaseModel):
         raise NotImplementedError
 
     @classmethod
-    def handle_verification(cls, query_params: Dict[str, Any]) -> Any | None:
+    def handle_verification(cls, payload: Dict[str, Any]) -> Any | None:
         """
         Handle webhook verification requests (e.g., Strava's GET challenge).
         Returns the response body if the verification is handled, otherwise None.
@@ -83,8 +83,11 @@ class WebhookProcessor(ABC, BaseModel):
         return None
 
     @abstractmethod
-    def define_sms_content(self) -> None:
-        """Process the payload and return the message to be sent."""
+    def should_enable_workflow(self, payload: Dict[str, Any]) -> None:
+        """
+        Determine whether to proceed with the workflow event based on the input payload.
+        Must be implemented by subclasses.
+        """
         raise NotImplementedError
 
     def send_sms(self) -> None:
@@ -159,24 +162,22 @@ class WebhookProcessor(ABC, BaseModel):
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()
 
-    def process_workflow(self) -> JSONResponse:
+    def process_workflow(self, payload: Dict[str, Any]) -> JSONResponse:
         """Perform the whole workflow: process payload, send SMS, trigger actions, etc."""  # noqa: E501
-        self.define_sms_content()
-        logger.debug(f"Defined SMS content: {self.sms_content}")
+        self.should_enable_workflow(payload)
         if not self.enable_workflow:
             logger.info("Workflow is disabled for this event.")
             return JSONResponse(
                 content={"status": "Workflow disabled for this event"},
                 status_code=200,
             )
-
         if self.sms_content:
             logger.info("Sending SMS with content.")
             self.send_sms()
         if self.github_settings:
             logger.info(
                 f"Triggering GitHub action for repo: {self.github_settings.repo}"
-            )  # noqa: E501
+            )
             self.fire_github_action()
 
         status_message = "SMS sent" if self.sms_content else "No SMS to send"
