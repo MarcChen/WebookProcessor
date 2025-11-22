@@ -1,6 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+w## [0.4.0] - 2025-11-22
+
+### Features
+
+- Add Notion webhook processor and update environment configuration ([`64078ee`](https://github.com/MarcChen/WebhookProcessor/commit/64078ee0c1201df15e85f30e33afe6f8d0bf234e))
+- Enhance create_github_settings to accept cooldown_minutes and update NotionWebhookProcessor for improved workflow handling ([`04a8520`](https://github.com/MarcChen/WebhookProcessor/commit/04a8520466c5d548142ace4fa83203998804d6c0))
+- Update GitHubSettings to use timedelta for cooldown and adjust NotionWebhookProcessor initialization ([`2247b6b`](https://github.com/MarcChen/WebhookProcessor/commit/2247b6bfff8dcfb192113b6cab301791df734323))
+
+### Miscellaneous Tasks
+
+- Update git-cliff dependency version to 2.10.1 in pyproject.toml and uv.lock ([`68d05ca`](https://github.com/MarcChen/WebhookProcessor/commit/68d05cae4c810898237950ef3cdbd152c9c99d91))
+
+### Refactor
+
+- Update webhook processors to enable workflow control and improve logging ([`db6af06`](https://github.com/MarcChen/WebhookProcessor/commit/db6af068310e8b8c99d125c90c783b6e328ba390))
+
+
 w## [0.3.0] - 2025-11-20
 
 ### Bug Fixes
