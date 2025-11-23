@@ -1,0 +1,43 @@
+name: Renew Gmail Watch
+
+on:
+  # Run every 6 days at 2 AM UTC (to renew before 7-day expiration)
+  schedule:
+    - cron: '0 2 */6 * *'
+
+  # Allow manual trigger for testing
+  workflow_dispatch:
+
+jobs:
+  renew-watch:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
+
+      - name: Renew Gmail watch
+        env:
+          GMAIL_SERVICE_ACCOUNT_KEY: ${{ secrets.GMAIL_SERVICE_ACCOUNT_KEY }}
+          GMAIL_USER_EMAIL: ${{ secrets.GMAIL_USER_EMAIL }}
+          GMAIL_PUBSUB_TOPIC: ${{ secrets.GMAIL_PUBSUB_TOPIC }}
+          GMAIL_REFRESH_TOKEN: ${{ secrets.GMAIL_REFRESH_TOKEN }}
+          GMAIL_CLIENT_ID: ${{ secrets.GMAIL_CLIENT_ID }}
+          GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
+        run: |
+          python app/utils/gmail/renew_gmail_watch.py
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Gmail watch renewal failed! Please check the logs and renew manually if needed."

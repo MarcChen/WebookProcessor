@@ -1,0 +1,4 @@
+project_id       = "your-gcp-project-id"
+region           = "us-central1"
+pubsub_topic_name = "gmail-webhook-notifications"
+webhook_endpoint = "https://your-app.onrender.com/webhook"
