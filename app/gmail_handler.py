@@ -19,9 +19,7 @@ class PubSubMessage(BaseModel):
     """Pub/Sub message structure."""
 
     data: str  # Base64-encoded data
-    messageId: str
-    message_id: str = Field(default="", alias="messageId")
-    publishTime: Optional[str] = None
+    message_id: str = Field(alias="messageId")
     publish_time: Optional[str] = Field(default=None, alias="publishTime")
 
 
@@ -105,22 +103,27 @@ class GmailWebhookProcessor(WebhookProcessor):
 
 
 if __name__ == "__main__":
+    import logging
+    import os
+
+    logging.basicConfig(level=logging.DEBUG)
+
+    # Set dummy env vars for validation
+    os.environ["GMAIL_GITHUB_TOKEN"] = "dummy_token"
+    os.environ["GMAIL_GITHUB_REPO"] = "dummy_repo"
+    os.environ["GMAIL_GITHUB_WORKFLOW_ID"] = "dummy_workflow_id"
+
     # Sample Pub/Sub payload from Gmail push notification
     sample_payload = {
         "message": {
-            "data": base64.b64encode(
-                json.dumps(
-                    {
-                        "emailAddress": "user@example.com",
-                        "historyId": 1234567890,
-                    }
-                ).encode("utf-8")
-            ).decode("utf-8"),
-            "messageId": "12345678901234",
-            "publishTime": "2025-11-23T16:00:00.000Z",
+            "data": "eyJlbWFpbEFkZHJlc3MiOiJrZW1hcjk4NzQxNUBnbzfpBC5jb20iLCJoaXN0b3J5SWQiOjMxMjU2Nn0=",  # noqa: E501
+            "messageId": "17307692776715457",
+            "message_id": "17307692776715457",
+            "publishTime": "2025-11-24T13:15:15.925Z",
+            "publish_time": "2025-11-24T13:15:15.925Z",
         },
-        "subscription": "projects/myproject/subscriptions/gmail-webhook-notifications-subscription",  # noqa: E501
-    }
+        "subscription": "projects/a-dummy-project/subscriptions/gmail-webhook-notifications-subscription",  # noqa: E501
+    }  # noqa: E501
 
     # Test the processor
     if GmailWebhookProcessor.can_handle(sample_payload):

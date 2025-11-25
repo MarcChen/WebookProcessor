@@ -2,7 +2,7 @@ import logging
 import os
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import requests
 from fastapi.responses import JSONResponse
@@ -60,10 +60,10 @@ class WebhookProcessor(ABC, BaseModel):
         ),
         exclude=True,
     )
-    sms_content: str | None = Field(
+    sms_content: Optional[str] = Field(
         default=None, description="Content of the SMS to be sent"
     )
-    github_settings: GitHubSettings | None = Field(
+    github_settings: Optional[GitHubSettings] = Field(
         default=None,
         description="GitHub action settings, if set then actions will be triggered",
         exclude=True,
@@ -80,7 +80,7 @@ class WebhookProcessor(ABC, BaseModel):
         raise NotImplementedError
 
     @classmethod
-    def handle_verification(cls, payload: Dict[str, Any]) -> Any | None:
+    def handle_verification(cls, payload: Dict[str, Any]) -> Optional[Any]:
         """
         Handle webhook verification requests (e.g., Strava's GET challenge).
         Returns the response body if the verification is handled, otherwise None.
