@@ -1,6 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
+w## [0.4.1] - 2025-11-25
+
+### Bug Fixes
+
+- Set default cooldown value in create_github_settings function ([`cbdef8a`](https://github.com/MarcChen/WebhookProcessor/commit/cbdef8aabbe330e6ddfb5684cbf00f888e5af200))
+- Simplify PubSubMessage model's message ID field ([`6b6a23a`](https://github.com/MarcChen/WebhookProcessor/commit/6b6a23aa891a06e1e593d08ed973d11432909467))
+
+### Features
+
+- Implement Gmail webhook integration using Pub/Sub, Terraform, and automated watch renewal, updating dependencies and application registry. ([`46b8479`](https://github.com/MarcChen/WebhookProcessor/commit/46b8479b079f8d8e76114ddb9c2a35b75ab59f0e))
+- Add Terraform configuration for GitHub Actions secrets management and update .gitignore ([`3aaaa2e`](https://github.com/MarcChen/WebhookProcessor/commit/3aaaa2eb0b291bf3952ffd69da2fdc595c9e0d5b))
+
+### Miscellaneous Tasks
+
+- Update dependency installation in renew-gmail-watch workflow to use requirements.txt ([`db3198e`](https://github.com/MarcChen/WebhookProcessor/commit/db3198ed2516e9156f24a8e799c2426895162140))
+
+
 w## [0.4.0] - 2025-11-22
 
 ### Features
