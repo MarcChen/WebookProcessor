@@ -36,8 +36,3 @@ jobs:
           GMAIL_CLIENT_SECRET: ${{ secrets.GMAIL_CLIENT_SECRET }}
         run: |
           python app/utils/gmail/renew_gmail_watch.py
-
-      - name: Notify on failure
-        if: failure()
-        run: |
-          echo "::error::Gmail watch renewal failed! Please check the logs and renew manually if needed."
