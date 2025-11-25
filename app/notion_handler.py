@@ -128,7 +128,7 @@ class NotionWebhookProcessor(WebhookProcessor):
         return hmac.compare_digest(computed_signature, signature_header)
 
     @classmethod
-    def handle_verification(cls, payload: Dict[str, Any]) -> Any | None:
+    def handle_verification(cls, payload: Dict[str, Any]) -> Optional[Any]:
         """
         Phase 1: The Handshake.
         If Notion sends a verification_token, we log it.
@@ -166,19 +166,22 @@ class NotionWebhookProcessor(WebhookProcessor):
 
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
-        model = NotionWebhookPayload.model_validate(payload)
+        try:
+            model = NotionWebhookPayload.model_validate(payload)
 
-        # 2. Type Check
-        valid_types = [
-            NotionEventType.PAGE_CREATED.value,
-            NotionEventType.PAGE_UPDATED.value,
-            NotionEventType.PAGE_CONTENT_UPDATED.value,
-        ]
+            # 2. Type Check
+            valid_types = [
+                NotionEventType.PAGE_CREATED.value,
+                NotionEventType.PAGE_UPDATED.value,
+                NotionEventType.PAGE_CONTENT_UPDATED.value,
+            ]
 
-        if model.type not in valid_types or model.entity.type != "page":
+            if model.type not in valid_types or model.entity.type != "page":
+                return False
+            else:
+                return True
+        except Exception:
             return False
-        else:
-            return True
 
     def should_enable_workflow(self, payload: Dict[str, Any]) -> bool:
         model = NotionWebhookPayload.model_validate(payload)
