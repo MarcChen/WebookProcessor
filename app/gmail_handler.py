@@ -95,12 +95,6 @@ class GmailWebhookProcessor(WebhookProcessor):
         # we always enable the workflow when we successfully decode the notification
         self.enable_workflow = True
 
-        # Set SMS content if configured
-        self.sms_content = (
-            f"New email received in {notification.emailAddress} "
-            f"(history: {notification.historyId})"
-        )
-
 
 if __name__ == "__main__":
     import logging
