@@ -39,3 +39,8 @@ variable "gmail_client_secret" {
   description = "Gmail client secret."
   type        = string
 }
+
+variable "simple_trigger_token" {
+  description = "Token for the Simple SMS Trigger."
+  type        = string
+}
