@@ -1,7 +1,6 @@
 from typing import Type
 
 from app.cal_com_handler import CalWebhookEvent
-from app.github_handler import GitHubWorkflowProcessor
 from app.gmail_handler import GmailWebhookProcessor
 from app.models import WebhookProcessor
 from app.notion_handler import NotionWebhookProcessor
@@ -15,5 +14,4 @@ WEBHOOK_PROCESSORS: list[Type[WebhookProcessor]] = [
     NotionWebhookProcessor,
     GmailWebhookProcessor,
     SimpleWebhookProcessor,
-    GitHubWorkflowProcessor,
 ]
