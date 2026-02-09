@@ -19,6 +19,7 @@ locals {
     GMAIL_REFRESH_TOKEN       = var.gmail_refresh_token
     GMAIL_CLIENT_ID           = var.gmail_client_id
     GMAIL_CLIENT_SECRET       = var.gmail_client_secret
+    SIMPLE_TRIGGER_TOKEN      = var.simple_trigger_token
   }
 
   secrets = { for k, v in local.raw_secrets : k => v if v != "" }
