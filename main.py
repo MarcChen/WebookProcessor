@@ -3,6 +3,7 @@ import os
 
 from fastapi import FastAPI, Request, Response, status
 
+from app.error_notifier import notify_error
 from app.registry import WEBHOOK_PROCESSORS
 
 # Logging setup
@@ -13,6 +14,25 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch unhandled exceptions across all endpoints and alert via FreeSMS."""
+    logger.error(
+        f"Unhandled exception on {request.method} {request.url.path}: {exc}",
+        exc_info=True,
+    )
+    notify_error(
+        f"Unhandled exception on {request.method} {request.url.path}",
+        context="FastAPI",
+        exc=exc,
+    )
+    return Response(
+        content=f'{{"status": "error", "detail": "{str(exc)}"}}',
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        media_type="application/json",
+    )
 
 
 # Healthcheck endpoint
@@ -66,6 +86,15 @@ async def webhook_listener(request: Request):
                 return response
 
         logger.error(f"No processor found for payload: {payload}")
+        payload_keys = (
+            list(payload.keys())
+            if isinstance(payload, dict)
+            else type(payload).__name__
+        )
+        notify_error(
+            f"No processor found for payload (keys: {payload_keys})",
+            context="POST /webhook",
+        )
         return Response(
             content='{"status": "error", "message": "No suitable processor found"}',
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -73,6 +102,11 @@ async def webhook_listener(request: Request):
         )
     except Exception as e:
         logger.error(f"Error processing webhook: {e}", exc_info=True)
+        notify_error(
+            f"Error processing webhook: {e}",
+            context="POST /webhook",
+            exc=e,
+        )
         return Response(
             content=f'{{"status": "error", "detail": "{str(e)}"}}',
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

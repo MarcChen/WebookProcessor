@@ -30,6 +30,23 @@ from googleapiclient.discovery import build
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+try:
+    from app.error_notifier import notify_error
+except ImportError:
+
+    def notify_error(
+        error_message: str,
+        context: Optional[str] = None,
+        exc: Optional[Exception] = None,
+    ) -> bool:
+        return False
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -101,10 +118,19 @@ def get_credentials(settings: GmailSettings):
             return credentials
         except Exception as e:
             logger.error(f"Failed to load service account credentials: {e}")
+            notify_error(
+                f"Failed to load service account credentials: {e}",
+                context="renew_gmail_watch",
+                exc=e,
+            )
             sys.exit(1)
 
     logger.error(
         "No valid credentials found. Set GMAIL_REFRESH_TOKEN (personal) or GMAIL_SERVICE_ACCOUNT_KEY (workspace)."  # noqa: E501
+    )
+    notify_error(
+        "No valid credentials found for Gmail watch renewal",
+        context="renew_gmail_watch",
     )
     sys.exit(1)
 
@@ -115,6 +141,11 @@ def renew_gmail_watch():
         settings = GmailSettings()
     except Exception as e:
         logger.error(f"Failed to load settings: {e}")
+        notify_error(
+            f"Failed to load settings: {e}",
+            context="renew_gmail_watch",
+            exc=e,
+        )
         sys.exit(1)
 
     logger.info(f"Renewing Gmail watch for: {settings.user_email}")
@@ -164,6 +195,11 @@ def renew_gmail_watch():
 
     except Exception as e:
         logger.error(f"❌ Failed to renew Gmail watch: {e}")
+        notify_error(
+            f"Failed to renew Gmail watch: {e}",
+            context="renew_gmail_watch",
+            exc=e,
+        )
         sys.exit(1)
 
 

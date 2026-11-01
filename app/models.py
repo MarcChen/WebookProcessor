@@ -54,7 +54,7 @@ class WebhookProcessor(ABC, BaseModel):
     model_config = SettingsConfigDict(arbitrary_types_allowed=True)
 
     freesms_client: FreeClient = Field(
-        default=FreeClient(
+        default_factory=lambda: FreeClient(
             user=os.getenv("FREE_ID"),
             password=os.getenv("FREE_SECRET"),
         ),
@@ -96,9 +96,14 @@ class WebhookProcessor(ABC, BaseModel):
         raise NotImplementedError
 
     def send_sms(self) -> None:
-        self.freesms_client.send_sms(
+        response = self.freesms_client.send_sms(
             text=SMS_PREFIX + self.sms_content,
         )
+        if response.error():
+            logger.error(
+                "FreeSMS notification delivery failed with status %s",
+                response.status_code,
+            )
 
     def _check_cooldown(self) -> bool:
         """
