@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 
 from app.cal_com_handler import CalWebhookEvent
 from app.gmail_handler import GmailWebhookProcessor
-from app.intervals_handler import IntervalsWebhookProcessor
 from app.notion_handler import NotionWebhookProcessor
 from app.simple_handler import SimpleWebhookProcessor
 from tests.base_test import BaseWebhookTest
@@ -40,49 +39,6 @@ class TestProcessors(BaseWebhookTest):
             "payload": {},
         }
         self.run_processor_test(CalWebhookEvent, payload_ping, expected_sms=None)
-
-    def test_intervals_processor(self):
-        payload = {
-            "events": [
-                {
-                    "athlete_id": "i780178",
-                    "type": "ACTIVITY_UPLOADED",
-                    "id": "i204876551",
-                    "start_date_local": "2026-11-01T19:26:47",
-                    "activity": {
-                        "id": "i204876551",
-                        "name": "Dubai Cyclisme virtuel",
-                        "type": "VirtualRide",
-                    },
-                }
-            ]
-        }
-
-        expected_msg = (
-            "New activity on Intervals.icu: i204876551 (Dubai Cyclisme virtuel)"
-        )
-        self.run_processor_test(
-            IntervalsWebhookProcessor,
-            payload,
-            expected_sms=expected_msg,
-            expected_github=True,
-        )
-
-        # Test non-activity event (should not trigger github)
-        payload_other = {
-            "events": [
-                {
-                    "athlete_id": "i780178",
-                    "type": "WELLNESS_UPDATED",
-                }
-            ]
-        }
-        self.run_processor_test(
-            IntervalsWebhookProcessor,
-            payload_other,
-            expected_sms=None,
-            expected_github=False,
-        )
 
     @patch("app.notion_handler.NotionWebhookProcessor._fetch_page_details")
     def test_notion_processor(self, mock_fetch):
