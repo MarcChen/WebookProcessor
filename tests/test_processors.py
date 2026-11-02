@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 
 from app.cal_com_handler import CalWebhookEvent
 from app.gmail_handler import GmailWebhookProcessor
+from app.intervals_handler import IntervalsWebhookProcessor
 from app.notion_handler import NotionWebhookProcessor
 from app.simple_handler import SimpleWebhookProcessor
-from app.strava_handler import StravaWebhookProcessor
 from tests.base_test import BaseWebhookTest
 
 
@@ -41,32 +41,47 @@ class TestProcessors(BaseWebhookTest):
         }
         self.run_processor_test(CalWebhookEvent, payload_ping, expected_sms=None)
 
-    @patch("app.strava_handler.StravaClient")
-    def test_strava_processor(self, mock_client_cls):
-        mock_client = mock_client_cls.return_value
-        mock_client.is_virtual_ride.return_value = True
-        mock_client.get_activity.return_value = {"name": "Virtual Ride"}
-
+    def test_intervals_processor(self):
         payload = {
-            "aspect_type": "create",
-            "event_time": 1234567890,
-            "object_id": 123,
-            "object_type": "activity",
-            "owner_id": 456,
-            "subscription_id": 789,
-            "updates": {},
+            "events": [
+                {
+                    "athlete_id": "i780178",
+                    "type": "ACTIVITY_UPLOADED",
+                    "id": "i204876551",
+                    "start_date_local": "2026-11-01T19:26:47",
+                    "activity": {
+                        "id": "i204876551",
+                        "name": "Dubai Cyclisme virtuel",
+                        "type": "VirtualRide",
+                    },
+                }
+            ]
         }
 
+        expected_msg = (
+            "New activity on Intervals.icu: i204876551 (Dubai Cyclisme virtuel)"
+        )
         self.run_processor_test(
-            StravaWebhookProcessor,
+            IntervalsWebhookProcessor,
             payload,
-            expected_sms="New activity virtual ride: Virtual Ride",
+            expected_sms=expected_msg,
             expected_github=True,
         )
 
-        mock_client.is_virtual_ride.return_value = False
+        # Test non-activity event (should not trigger github)
+        payload_other = {
+            "events": [
+                {
+                    "athlete_id": "i780178",
+                    "type": "WELLNESS_UPDATED",
+                }
+            ]
+        }
         self.run_processor_test(
-            StravaWebhookProcessor, payload, expected_sms=None, expected_github=False
+            IntervalsWebhookProcessor,
+            payload_other,
+            expected_sms=None,
+            expected_github=False,
         )
 
     @patch("app.notion_handler.NotionWebhookProcessor._fetch_page_details")
