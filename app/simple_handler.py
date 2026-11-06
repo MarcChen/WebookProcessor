@@ -1,3 +1,4 @@
+import hmac
 import logging
 import os
 from typing import Any, Dict
@@ -14,11 +15,13 @@ class SimpleWebhookProcessor(WebhookProcessor):
 
     type: str = Field(..., pattern="^simple$")
     message: str
-    token: str
+    token: str = Field(..., exclude=True)
 
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
         """Check if the payload is a simple trigger."""
+        if not isinstance(payload, dict):
+            return False
         return payload.get("type") == "simple"
 
     def should_enable_workflow(self, payload: Dict[str, Any]) -> None:
@@ -28,12 +31,16 @@ class SimpleWebhookProcessor(WebhookProcessor):
         if not expected_token:
             logger.error("SIMPLE_TRIGGER_TOKEN not set in environment variables.")
             self.enable_workflow = False
+            self.response_status_code = 500
+            self.response_message = "Server authentication configuration error"
             return
 
-        if self.token == expected_token:
+        if hmac.compare_digest(self.token, expected_token):
             logger.info("Simple trigger token verified.")
             self.enable_workflow = True
             self.sms_content = self.message
         else:
             logger.warning("Invalid simple trigger token received.")
             self.enable_workflow = False
+            self.response_status_code = 401
+            self.response_message = "Invalid trigger token"

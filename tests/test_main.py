@@ -107,6 +107,86 @@ class TestMainEndpoints(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(kwargs.get("context"), "FastAPI")
         self.assertEqual(kwargs.get("exc"), exc)
 
+    async def test_global_exception_handler_json_formatting_with_special_characters(
+        self,
+    ):
+        import json
+
+        mock_request = MagicMock()
+        mock_request.method = "POST"
+        mock_request.url.path = "/webhook"
+
+        exc = ValueError('Invalid "field" with \n newline and {curly} braces')
+        response = await global_exception_handler(mock_request, exc)
+
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        parsed = json.loads(response.body.decode("utf-8"))
+        self.assertEqual(parsed["status"], "error")
+        self.assertIn('Invalid "field"', parsed["detail"])
+
+    async def test_webhook_listener_handles_verification_handshake(self):
+        import json
+
+        mock_request = MagicMock()
+        mock_request.body = AsyncMock(return_value=b"{}")
+        mock_request.json = AsyncMock(
+            return_value={"verification_token": "notion_token_xyz"}
+        )
+
+        response = await webhook_listener(mock_request)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        parsed = json.loads(response.body.decode("utf-8"))
+        self.assertEqual(parsed.get("verification_token"), "notion_token_xyz")
+
+    async def test_webhook_listener_notion_signature_rejection(self):
+        with patch.dict(os.environ, {"NOTION_WEBHOOK_SECRET": "secret_key"}):
+            mock_request = MagicMock()
+            raw_body = (
+                b'{"type": "page.created", "entity": {"id": "123", "type": "page"}}'
+            )
+            mock_request.body = AsyncMock(return_value=raw_body)
+            mock_request.json = AsyncMock(
+                return_value={
+                    "type": "page.created",
+                    "entity": {"id": "123", "type": "page"},
+                }
+            )
+            mock_request.headers = {"X-Notion-Signature": "sha256=invalid_signature"}
+
+            response = await webhook_listener(mock_request)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    async def test_webhook_listener_notion_signature_missing_header_rejected(self):
+        with patch.dict(os.environ, {"NOTION_WEBHOOK_SECRET": "secret_key"}):
+            mock_request = MagicMock()
+            raw_body = (
+                b'{"type": "page.created", "entity": {"id": "123", "type": "page"}}'
+            )
+            mock_request.body = AsyncMock(return_value=raw_body)
+            mock_request.json = AsyncMock(
+                return_value={
+                    "type": "page.created",
+                    "entity": {"id": "123", "type": "page"},
+                }
+            )
+            # No X-Notion-Signature header provided
+            mock_request.headers = {}
+
+            response = await webhook_listener(mock_request)
+            self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @patch("main.notify_error")
+    async def test_webhook_listener_malformed_json_returns_400(self, mock_notify):
+        mock_request = MagicMock()
+        mock_request.body = AsyncMock(return_value=b"{bad_json")
+        mock_request.json = AsyncMock(
+            side_effect=ValueError("Expecting property name enclosed in double quotes")
+        )
+
+        response = await webhook_listener(mock_request)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        mock_notify.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

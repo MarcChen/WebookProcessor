@@ -46,6 +46,26 @@ class TestRenewGmailWatch(unittest.TestCase):
         self.assertIn("Failed to renew Gmail watch", args[0])
         self.assertEqual(kwargs.get("context"), "renew_gmail_watch")
 
+    def test_gmail_settings_supports_service_account_without_oauth(self):
+        from app.utils.gmail.renew_gmail_watch import GmailSettings
+
+        with patch.dict(
+            os.environ,
+            {
+                "GMAIL_SERVICE_ACCOUNT_KEY": "dummy_base64_key",
+                "GMAIL_USER_EMAIL": "user@example.com",
+                "GMAIL_PUBSUB_TOPIC": "projects/my-proj/topics/my-topic",
+            },
+            clear=True,
+        ):
+            settings = GmailSettings()
+            self.assertEqual(settings.user_email, "user@example.com")
+            self.assertEqual(settings.pubsub_topic, "projects/my-proj/topics/my-topic")
+            self.assertEqual(settings.service_account_key, "dummy_base64_key")
+            self.assertIsNone(settings.client_id)
+            self.assertIsNone(settings.client_secret)
+            self.assertIsNone(settings.refresh_token)
+
 
 if __name__ == "__main__":
     unittest.main()

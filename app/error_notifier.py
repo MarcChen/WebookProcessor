@@ -72,8 +72,18 @@ class ErrorNotifier:
                 raw_text = raw_text[: MAX_SMS_LENGTH - 3] + "..."
 
             # Cooldown check per distinct context/error signature to avoid HTTP 402
-            cache_key = f"{context}:{type(exc).__name__ if exc else full_desc[:50]}"
+            # Base cache key on context and exception type or generic prefix
+            # to prevent attacker-controlled payload keys from bypassing throttling
+            cache_key = f"{context}:{type(exc).__name__ if exc else 'error'}"
             now = time.time()
+
+            # Bounded cache: keep newest 250 items if cache exceeds 500 items
+            if len(self._last_sent_times) > 500:
+                sorted_entries = sorted(
+                    self._last_sent_times.items(), key=lambda item: item[1]
+                )
+                self._last_sent_times = dict(sorted_entries[-250:])
+
             last_time = self._last_sent_times.get(cache_key, 0.0)
             if now - last_time < self.cooldown_seconds:
                 logger.warning(
