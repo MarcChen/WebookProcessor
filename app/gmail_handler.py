@@ -46,17 +46,12 @@ class GmailWebhookProcessor(WebhookProcessor):
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
         """Check if the payload is a Pub/Sub message from Gmail."""
-        try:
-            # Pub/Sub messages have a 'message' field with 'data' inside
-            if "message" not in payload:
-                return False
-
-            # Validate the structure
-            cls.model_validate(payload)
-            return True
-        except Exception as e:
-            logger.debug(f"GmailWebhookProcessor cannot handle payload: {e}")
+        if not isinstance(payload, dict):
             return False
+        message = payload.get("message")
+        if not isinstance(message, dict):
+            return False
+        return "data" in message and ("messageId" in message or "message_id" in message)
 
     def _decode_message_data(self) -> Optional[GmailNotificationData]:
         """Decode the base64-encoded Pub/Sub message data."""
@@ -65,6 +60,8 @@ class GmailWebhookProcessor(WebhookProcessor):
             decoded_bytes = base64.b64decode(self.message.data)
             decoded_str = decoded_bytes.decode("utf-8")
             data = json.loads(decoded_str)
+            if not isinstance(data, dict):
+                return None
 
             logger.info(f"Decoded Gmail notification: {data}")
 

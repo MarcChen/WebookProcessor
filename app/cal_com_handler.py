@@ -1,6 +1,6 @@
 import logging
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from pydantic import Field
 
@@ -27,14 +27,17 @@ class CalTriggerEvent(str, Enum):
 class CalWebhookEvent(WebhookProcessor):
     trigger_event: CalTriggerEvent = Field(..., alias="triggerEvent")
     created_at: str = Field(..., alias="createdAt")
-    payload: Dict[str, Any]
+    payload: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
         """Check if the payload is from Cal.com by looking for 'triggerEvent'."""
+        if not isinstance(payload, dict):
+            return False
+        trigger_event = payload.get("triggerEvent")
         return (
-            "triggerEvent" in payload
-            and payload["triggerEvent"] in CalTriggerEvent.__members__
+            isinstance(trigger_event, str)
+            and trigger_event in CalTriggerEvent.__members__
         )
 
     def should_enable_workflow(self, payload: Dict[str, Any]) -> None:
@@ -43,8 +46,14 @@ class CalWebhookEvent(WebhookProcessor):
             logger.info("Disabling workflow for PING event.")
         else:
             self.enable_workflow = True
-            title = self.payload.get("title", "No Title")
-            organizer = self.payload.get("organizer", {}).get("name", "Unknown")
+            payload_data = self.payload if isinstance(self.payload, dict) else {}
+            title = payload_data.get("title") or "No Title"
+            organizer_data = payload_data.get("organizer")
+            if isinstance(organizer_data, dict):
+                organizer = organizer_data.get("name") or "Unknown"
+            else:
+                organizer = "Unknown"
+
             self.sms_content = (
                 f"Booking '{title}' ({self.trigger_event.value}) created by {organizer}"
             )

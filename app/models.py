@@ -12,6 +12,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # SMS prefix constant
 SMS_PREFIX = "Hook2SMS service : \n"
+DEFAULT_REQUEST_TIMEOUT = 10.0
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,16 @@ class WebhookProcessor(ABC, BaseModel):
         default=True,
         description="Flag to enable or disable the entire processing workflow",
     )
+    response_status_code: int = Field(
+        default=200,
+        description="HTTP status code for the workflow response",
+        exclude=True,
+    )
+    response_message: Optional[str] = Field(
+        default=None,
+        description="Custom message for workflow response",
+        exclude=True,
+    )
 
     @classmethod
     @abstractmethod
@@ -96,14 +107,20 @@ class WebhookProcessor(ABC, BaseModel):
         raise NotImplementedError
 
     def send_sms(self) -> None:
-        response = self.freesms_client.send_sms(
-            text=SMS_PREFIX + self.sms_content,
-        )
-        if response.error():
-            logger.error(
-                "FreeSMS notification delivery failed with status %s",
-                response.status_code,
+        if not self.sms_content:
+            logger.warning("send_sms called but sms_content is empty.")
+            return
+        try:
+            response = self.freesms_client.send_sms(
+                text=SMS_PREFIX + self.sms_content,
             )
+            if response.error():
+                logger.error(
+                    "FreeSMS notification delivery failed with status %s",
+                    response.status_code,
+                )
+        except Exception as e:
+            logger.error(f"Failed to send SMS via FreeSMS: {e}", exc_info=True)
 
     def _check_cooldown(self) -> bool:
         """
@@ -120,7 +137,9 @@ class WebhookProcessor(ABC, BaseModel):
         params = {"per_page": 1, "exclude_pull_requests": str(True).lower()}
 
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(
+                url, headers=headers, params=params, timeout=DEFAULT_REQUEST_TIMEOUT
+            )
             response.raise_for_status()
             data = response.json()
 
@@ -151,11 +170,17 @@ class WebhookProcessor(ABC, BaseModel):
             logger.info(f"Cooldown check passed. Last run was {time_diff} ago.")
             return True
 
+        except requests.exceptions.RequestException as e:
+            logger.error(
+                f"Failed to check workflow cooldown due to GitHub API error: {e}. "
+                "Skipping trigger to prevent rate limit cascade or bad requests."
+            )
+            return False
         except Exception as e:
             logger.error(
-                f"Failed to check workflow cooldown: {e}. Defaulting to trigger."
+                f"Failed to check workflow cooldown: {e}. Defaulting to not trigger."
             )
-            return True
+            return False
 
     def fire_github_action(self) -> None:
         """Trigger any GitHub actions if cooldown has passed."""
@@ -173,31 +198,53 @@ class WebhookProcessor(ABC, BaseModel):
             "inputs": self.github_settings.inputs,
         }
 
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(
+            url, json=payload, headers=headers, timeout=DEFAULT_REQUEST_TIMEOUT
+        )
         response.raise_for_status()
+        logger.info(
+            "GitHub action triggered successfully for repo: %s",
+            self.github_settings.repo,
+        )
 
     def process_workflow(self, payload: Dict[str, Any]) -> JSONResponse:
         """Perform the whole workflow: process payload, send SMS, trigger actions, etc."""  # noqa: E501
         self.should_enable_workflow(payload)
         if not self.enable_workflow:
             logger.info("Workflow is disabled for this event.")
+            msg = self.response_message or "Workflow disabled for this event"
             return JSONResponse(
-                content={"status": "Workflow disabled for this event"},
-                status_code=200,
+                content={"status": msg},
+                status_code=self.response_status_code,
             )
         if self.sms_content:
             logger.info("Sending SMS with content.")
             self.send_sms()
         if self.github_settings:
-            logger.info(
-                f"Triggering GitHub action for repo: {self.github_settings.repo}"
-            )
-            self.fire_github_action()
+            try:
+                logger.info(
+                    "Triggering GitHub action for repo: %s",
+                    self.github_settings.repo,
+                )
+                self.fire_github_action()
+            except Exception as e:
+                logger.error(
+                    f"Failed to trigger GitHub action for repo {self.github_settings.repo}: {e}",  # noqa: E501
+                    exc_info=True,
+                )
+                self.response_status_code = 502
+                prefix = "SMS sent but " if self.sms_content else ""
+                self.response_message = f"{prefix}GitHub action dispatch failed: {e}"
 
-        status_message = "SMS sent" if self.sms_content else "No SMS to send"
+        status_message = (
+            self.response_message
+            if self.response_message
+            else ("SMS sent" if self.sms_content else "No SMS to send")
+        )
         return JSONResponse(
             content={
                 "status": status_message,
-                "event": self.model_dump(exclude_none=True),
-            }
+                "event": self.model_dump(mode="json", exclude_none=True),
+            },
+            status_code=self.response_status_code,
         )

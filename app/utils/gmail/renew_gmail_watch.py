@@ -77,8 +77,10 @@ class GmailSettings(BaseSettings):
     refresh_token: Optional[str] = Field(
         default=None, description="OAuth2 refresh token"
     )
-    client_id: str = Field(..., description="OAuth2 client ID")
-    client_secret: str = Field(..., description="OAuth2 client secret")
+    client_id: Optional[str] = Field(default=None, description="OAuth2 client ID")
+    client_secret: Optional[str] = Field(
+        default=None, description="OAuth2 client secret"
+    )
 
 
 def get_credentials(settings: GmailSettings):

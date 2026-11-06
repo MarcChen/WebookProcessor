@@ -161,6 +161,25 @@ class TestErrorNotifier(unittest.TestCase):
         self.assertIn("Something went critically wrong", kwargs["error_message"])
         self.assertEqual(kwargs["context"], "Log:test_error_log_handler")
 
+    @patch("app.error_notifier.FreeClient")
+    def test_cache_bounding_caps_growth(self, mock_client_cls):
+        mock_client = mock_client_cls.return_value
+        mock_response = MagicMock()
+        mock_response.error.return_value = False
+        mock_client.send_sms.return_value = mock_response
+
+        # Seed with 600 items
+        for i in range(600):
+            self.notifier._last_sent_times[f"Ctx_{i}:err"] = 1000.0 + i
+
+        self.assertEqual(len(self.notifier._last_sent_times), 600)
+
+        # Trigger send_error_alert which executes bounding check (> 500 -> keeps 250)
+        self.notifier.send_error_alert("New trigger", context="Ctx_new")
+
+        # Must be pruned down to 251 (250 kept + 1 newly added)
+        self.assertLessEqual(len(self.notifier._last_sent_times), 260)
+
 
 if __name__ == "__main__":
     unittest.main()

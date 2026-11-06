@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class NotionSettings(BaseSettings):
     """Settings specifically for Notion API interaction."""
 
-    webhook_secret: str
+    webhook_secret: Optional[str] = None
     api_token: str
     model_config = SettingsConfigDict(extra="ignore", env_prefix="NOTION_")
 
@@ -36,13 +36,54 @@ class NotionCheckboxProperty(BaseModel):
 class NotionPageProperties(BaseModel):
     """
     Represents the properties of a page.
-    We use extra='ignore' to handle the dynamic nature of Notion pages,
-    but we strictly define 'Today' to validate our specific requirement.
+    Allows extra properties so Notion dynamic properties (like Name, Title, etc.)
+    are preserved for title extraction.
     """
 
-    Today: Optional[NotionCheckboxProperty]
+    Today: Optional[NotionCheckboxProperty] = None
 
-    model_config = {"extra": "ignore"}
+    model_config = SettingsConfigDict(extra="allow")
+
+    def extract_title(self) -> str:
+        """Extract title from any property of type 'title' or named 'Name'/'Title'."""
+        extras = self.__pydantic_extra__ or {}
+        # 1. Search for any property with type == 'title'
+        for prop_val in extras.values():
+            if isinstance(prop_val, dict) and prop_val.get("type") == "title":
+                title_list = prop_val.get("title", [])
+                if (
+                    title_list
+                    and isinstance(title_list, list)
+                    and isinstance(title_list[0], dict)
+                ):
+                    return title_list[0].get("plain_text") or "Unknown Title"
+
+        # 2. Check explicitly for Name or Title properties
+        for name in ("Name", "Title"):
+            val = extras.get(name) or getattr(self, name, None)
+            if val is not None:
+                if isinstance(val, str):
+                    return val
+                if isinstance(val, dict):
+                    title_list = val.get("title", [])
+                    if (
+                        title_list
+                        and isinstance(title_list, list)
+                        and isinstance(title_list[0], dict)
+                    ):
+                        return title_list[0].get("plain_text") or "Unknown Title"
+                elif (
+                    hasattr(val, "title")
+                    and not callable(val.title)
+                    and isinstance(val.title, (list, tuple))
+                    and val.title
+                ):
+                    first = val.title[0]
+                    if isinstance(first, dict):
+                        return first.get("plain_text") or "Unknown Title"
+                    return getattr(first, "plain_text", "Unknown Title")
+
+        return "Unknown Title"
 
 
 class NotionPage(BaseModel):
@@ -157,7 +198,7 @@ class NotionWebhookProcessor(WebhookProcessor):
             "Content-Type": "application/json",
         }
         try:
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=10.0)
             response.raise_for_status()
             return NotionPage.model_validate(response.json())
         except Exception as e:
@@ -166,6 +207,8 @@ class NotionWebhookProcessor(WebhookProcessor):
 
     @classmethod
     def can_handle(cls, payload: Dict[str, Any]) -> bool:
+        if not isinstance(payload, dict):
+            return False
         try:
             model = NotionWebhookPayload.model_validate(payload)
 
@@ -183,19 +226,21 @@ class NotionWebhookProcessor(WebhookProcessor):
         except Exception:
             return False
 
-    def should_enable_workflow(self, payload: Dict[str, Any]) -> bool:
+    def should_enable_workflow(self, payload: Dict[str, Any]) -> None:
         model = NotionWebhookPayload.model_validate(payload)
         notion_settings = NotionSettings()
 
         # The "Today" Column Check (API Call)
         if not notion_settings.api_token:
             logger.error("Missing NOTION_API_TOKEN cannot verify 'Today' status.")
-            return False
+            self.enable_workflow = False
+            return
 
         page_data = self._fetch_page_details(model.entity.id, notion_settings.api_token)
 
         if not page_data:
-            return False
+            self.enable_workflow = False
+            return
 
         # Check specifically for the 'Today' property
         if page_data.properties.Today and page_data.properties.Today.checkbox is True:
@@ -206,11 +251,19 @@ class NotionWebhookProcessor(WebhookProcessor):
 
             # Extract page title if available
             page_title = "Unknown Title"
-            if hasattr(page_data.properties, "Name") and page_data.properties.Name:
-                # Notion title properties have a specific structure
-                title_prop = getattr(page_data.properties, "Name", None)
-                if title_prop and hasattr(title_prop, "title") and title_prop.title:
-                    page_title = title_prop.title[0].get("plain_text", "Unknown Title")
+            if hasattr(page_data.properties, "extract_title"):
+                page_title = page_data.properties.extract_title()
+            elif hasattr(page_data.properties, "Name") and page_data.properties.Name:
+                name_val = getattr(page_data.properties, "Name", None)
+                if isinstance(name_val, str):
+                    page_title = name_val
+                elif (
+                    name_val
+                    and hasattr(name_val, "title")
+                    and not callable(name_val.title)
+                    and name_val.title
+                ):
+                    page_title = name_val.title[0].get("plain_text", "Unknown Title")
 
             # Set workflow inputs for GitHub Action
             self.github_settings.inputs = {
