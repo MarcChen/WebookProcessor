@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebhookProcessor — Process & Architecture Specification</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --success: #34d399;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --card-bg: rgba(30, 41, 59, 0.7);
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    [data-theme="light"] {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-border: #e2e8f0;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --success: #059669;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --card-bg: rgba(255, 255, 255, 0.85);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--surface-border);
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      color: #0f172a;
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .brand h1 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: rgba(56, 189, 248, 0.1);
+      color: var(--accent);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 0.2rem 0.6rem;
+      border-radius: 9999px;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .live-badge:hover {
+      background: rgba(56, 189, 248, 0.2);
+    }
+
+    .live-indicator {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.85); }
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    button {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--surface-border);
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    main {
+      flex: 1;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+      width: 100%;
+    }
+
+    .hero-panel {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+      .hero-panel {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .hero-info h2 {
+      font-size: 1.2rem;
+      margin-bottom: 0.5rem;
+      color: var(--accent);
+    }
+
+    .hero-info p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .endpoint-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+
+    .endpoint-badge {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      background: var(--bg);
+      border: 1px solid var(--surface-border);
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
+    }
+
+    .endpoint-badge .method {
+      font-weight: 700;
+      color: var(--accent);
+      margin-right: 0.3rem;
+    }
+
+    .hero-meta {
+      background: var(--bg);
+      border: 1px solid var(--surface-border);
+      border-radius: 8px;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .meta-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+    }
+
+    .meta-label {
+      color: var(--text-muted);
+    }
+
+    .meta-value {
+      font-family: var(--font-mono);
+      font-weight: 600;
+    }
+
+    /* Diagram Section */
+    .diagram-section {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+    }
+
+    .section-header {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--surface-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .tab-btn {
+      padding: 0.3rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+    }
+
+    .tab-btn.active {
+      background: var(--bg);
+      border-color: var(--surface-border);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .diagram-viewport {
+      padding: 1.5rem;
+      overflow-x: auto;
+      background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.03) 0%, transparent 80%);
+      display: flex;
+      justify-content: center;
+    }
+
+    svg {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .node {
+      cursor: pointer;
+      transition: transform 0.15s ease, filter 0.15s ease;
+    }
+
+    .node:hover {
+      filter: brightness(1.15);
+    }
+
+    .flow-line {
+      stroke-dasharray: 6 3;
+      animation: dash 20s linear infinite;
+    }
+
+    @keyframes dash {
+      to {
+        stroke-dashoffset: -1000;
+      }
+    }
+
+    /* Process steps table */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .step-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 10px;
+      padding: 1.25rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+    }
+
+    .step-num {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: var(--bg);
+      border: 1px solid var(--surface-border);
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .step-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--accent);
+      padding-right: 1.5rem;
+    }
+
+    .step-desc {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      line-height: 1.4;
+    }
+
+    .step-code {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      background: var(--bg);
+      padding: 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--surface-border);
+      color: var(--text);
+      overflow-x: auto;
+      margin-top: auto;
+    }
+
+    footer {
+      border-top: 1px solid var(--surface-border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: auto;
+    }
+
+    /* Modal / Inspector */
+    .inspector-panel {
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .inspector-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .info-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    .info-table th, .info-table td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--surface-border);
+    }
+
+    .info-table th {
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .info-table td.mono {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body data-theme="dark">
+  <header>
+    <div class="brand">
+      <span class="brand-badge">Archify</span>
+      <h1>WebhookProcessor</h1>
+      <a class="live-badge" href="https://hook2sms.onrender.com" target="_blank" rel="noopener noreferrer">
+        <span class="live-indicator"></span>
+        <span>https://hook2sms.onrender.com</span>
+      </a>
+    </div>
+    <div class="controls">
+      <button id="themeToggle" onclick="toggleTheme()" title="Toggle Dark/Light Mode">
+        🌓 Mode
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="hero-panel">
+      <div class="hero-info">
+        <h2>Process Architecture & Execution Topology</h2>
+        <p>
+          WebhookProcessor is a cloud webhook router and event translation gateway running on Render.
+          It ingests external events from Cal.com, Notion, Gmail Pub/Sub, and Simple triggers,
+          routes them through domain processors, validates schemas via Pydantic, and executes dual downstream actions:
+          <strong>FreeMobile SMS notifications</strong> and <strong>GitHub Actions repository dispatch</strong>.
+        </p>
+        <div class="endpoint-badges">
+          <span class="endpoint-badge"><span class="method">GET</span>/</span>
+          <span class="endpoint-badge"><span class="method">GET</span>/health</span>
+          <span class="endpoint-badge"><span class="method">GET</span>/webhook</span>
+          <span class="endpoint-badge"><span class="method">POST</span>/webhook</span>
+        </div>
+      </div>
+      <div class="hero-meta">
+        <div class="meta-row">
+          <span class="meta-label">Environment:</span>
+          <span class="meta-value">Render Web Service</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Runtime:</span>
+          <span class="meta-value">Python / FastAPI</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Base URL:</span>
+          <span class="meta-value" style="color: var(--accent);">hook2sms.onrender.com</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Error Channel:</span>
+          <span class="meta-value">FreeSMS Alert [SMS_PREFIX]</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Diagram -->
+    <div class="diagram-section">
+      <div class="section-header">
+        <div class="section-title">
+          <span>🔄</span> End-to-End Request Pipeline
+        </div>
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchView('flow')">Workflow Graph</button>
+          <button class="tab-btn" onclick="switchView('sequence')">Sequence Trace</button>
+        </div>
+      </div>
+
+      <div class="diagram-viewport" id="viewportFlow">
+        <svg viewBox="0 0 1020 520" width="1020" height="520" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#38bdf8" />
+            </marker>
+            <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#34d399" />
+            </marker>
+            <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+              <path d="M 0 1 L 10 5 L 0 9 z" fill="#f87171" />
+            </marker>
+            <linearGradient id="boxGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#1e293b" />
+              <stop offset="100%" stop-color="#0f172a" />
+            </linearGradient>
+            <linearGradient id="activeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#0369a1" />
+              <stop offset="100%" stop-color="#0284c7" />
+            </linearGradient>
+          </defs>
+
+          <!-- Boundary: External Clients -->
+          <rect x="20" y="40" width="180" height="440" rx="12" fill="url(#boxGrad)" stroke="#334155" stroke-width="1.5" />
+          <text x="35" y="70" font-family="sans-serif" font-size="12" font-weight="700" fill="#94a3b8" letter-spacing="1">EVENT PRODUCERS</text>
+
+          <g class="node" transform="translate(35, 90)">
+            <rect width="150" height="55" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.2" />
+            <text x="15" y="25" font-family="sans-serif" font-size="12" font-weight="600" fill="#f8fafc">Cal.com</text>
+            <text x="15" y="42" font-family="monospace" font-size="9" fill="#94a3b8">BOOKING_CREATED</text>
+          </g>
+
+          <g class="node" transform="translate(35, 160)">
+            <rect width="150" height="55" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.2" />
+            <text x="15" y="25" font-family="sans-serif" font-size="12" font-weight="600" fill="#f8fafc">Notion</text>
+            <text x="15" y="42" font-family="monospace" font-size="9" fill="#94a3b8">page.properties_updated</text>
+          </g>
+
+          <g class="node" transform="translate(35, 230)">
+            <rect width="150" height="55" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.2" />
+            <text x="15" y="25" font-family="sans-serif" font-size="12" font-weight="600" fill="#f8fafc">Gmail Pub/Sub</text>
+            <text x="15" y="42" font-family="monospace" font-size="9" fill="#94a3b8">Cloud Pub/Sub Push</text>
+          </g>
+
+          <g class="node" transform="translate(35, 300)">
+            <rect width="150" height="55" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.2" />
+            <text x="15" y="25" font-family="sans-serif" font-size="12" font-weight="600" fill="#f8fafc">Simple SMS Trigger</text>
+            <text x="15" y="42" font-family="monospace" font-size="9" fill="#94a3b8">token + message payload</text>
+          </g>
+
+          <g class="node" transform="translate(35, 370)">
+            <rect width="150" height="55" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.2" />
+            <text x="15" y="25" font-family="sans-serif" font-size="12" font-weight="600" fill="#f8fafc">Verification Clients</text>
+            <text x="15" y="42" font-family="monospace" font-size="9" fill="#94a3b8">GET challenge queries</text>
+          </g>
+
+          <!-- Boundary: Ingress & Core Service -->
+          <rect x="250" y="40" width="460" height="440" rx="12" fill="url(#boxGrad)" stroke="#38bdf8" stroke-width="1.5" stroke-dasharray="6 3" />
+          <text x="270" y="70" font-family="sans-serif" font-size="12" font-weight="700" fill="#38bdf8" letter-spacing="1">RENDER CLOUD: hook2sms.onrender.com</text>
+
+          <!-- Ingress Gateway -->
+          <g class="node" transform="translate(275, 95)">
+            <rect width="190" height="75" rx="8" fill="#0f172a" stroke="#818cf8" stroke-width="1.5" />
+            <text x="15" y="24" font-family="sans-serif" font-size="12" font-weight="700" fill="#818cf8">FastAPI App (main.py)</text>
+            <text x="15" y="44" font-family="monospace" font-size="10" fill="#38bdf8">POST /webhook</text>
+            <text x="15" y="60" font-family="monospace" font-size="10" fill="#94a3b8">GET  /webhook | /health | /</text>
+          </g>
+
+          <!-- Registry Matcher -->
+          <g class="node" transform="translate(275, 210)">
+            <rect width="190" height="70" rx="8" fill="#0f172a" stroke="#38bdf8" stroke-width="1.2" />
+            <text x="15" y="24" font-family="sans-serif" font-size="11" font-weight="700" fill="#f8fafc">Processor Registry</text>
+            <text x="15" y="42" font-family="monospace" font-size="9" fill="#94a3b8">can_handle(payload)</text>
+            <text x="15" y="56" font-family="monospace" font-size="9" fill="#94a3b8">handle_verification()</text>
+          </g>
+
+          <!-- Pipeline Processing -->
+          <g class="node" transform="translate(505, 95)">
+            <rect width="180" height="185" rx="8" fill="#0f172a" stroke="#34d399" stroke-width="1.2" />
+            <text x="15" y="25" font-family="sans-serif" font-size="11" font-weight="700" fill="#34d399">Execution Pipeline</text>
+            <text x="15" y="50" font-family="monospace" font-size="9" fill="#f8fafc">1. model_validate()</text>
+            <text x="15" y="70" font-family="monospace" font-size="9" fill="#94a3b8">   (Pydantic validation)</text>
+            <text x="15" y="95" font-family="monospace" font-size="9" fill="#f8fafc">2. should_enable_wf()</text>
+            <text x="15" y="115" font-family="monospace" font-size="9" fill="#94a3b8">   (condition check)</text>
+            <text x="15" y="140" font-family="monospace" font-size="9" fill="#f8fafc">3. process_workflow()</text>
+            <text x="15" y="160" font-family="monospace" font-size="9" fill="#94a3b8">   (SMS + GitHub trigger)</text>
+          </g>
+
+          <!-- Error Circuit -->
+          <g class="node" transform="translate(275, 335)">
+            <rect width="410" height="120" rx="8" fill="#1e1b2e" stroke="#f87171" stroke-width="1.2" />
+            <text x="15" y="24" font-family="sans-serif" font-size="11" font-weight="700" fill="#f87171">Error Boundary & Circuit Breaker (error_notifier.py)</text>
+            <text x="15" y="46" font-family="sans-serif" font-size="9" fill="#f8fafc">• Catches unhandled exceptions, unmatched payloads, validation errors</text>
+            <text x="15" y="66" font-family="sans-serif" font-size="9" fill="#f8fafc">• Throttles repeated alerts (60s cooldown cache) to avoid HTTP 402</text>
+            <text x="15" y="86" font-family="monospace" font-size="9" fill="#f87171">• Dispatches SMS alert: [WebhookProcessor ERROR] [context]</text>
+            <text x="15" y="104" font-family="monospace" font-size="9" fill="#94a3b8">• Returns HTTP 400 Bad Request or HTTP 500 Internal Error</text>
+          </g>
+
+          <!-- Boundary: Downstream Destinations -->
+          <rect x="760" y="40" width="230" height="440" rx="12" fill="url(#boxGrad)" stroke="#334155" stroke-width="1.5" />
+          <text x="780" y="70" font-family="sans-serif" font-size="12" font-weight="700" fill="#94a3b8" letter-spacing="1">DOWNSTREAM ACTIONS</text>
+
+          <g class="node" transform="translate(780, 110)">
+            <rect width="190" height="80" rx="8" fill="#1e293b" stroke="#34d399" stroke-width="1.2" />
+            <text x="15" y="24" font-family="sans-serif" font-size="12" font-weight="700" fill="#34d399">FreeMobile SMS API</text>
+            <text x="15" y="42" font-family="sans-serif" font-size="9" fill="#f8fafc">Direct SMS to User Phone</text>
+            <text x="15" y="60" font-family="monospace" font-size="8" fill="#94a3b8">Prefix: "Hook2SMS service : \n"</text>
+          </g>
+
+          <g class="node" transform="translate(780, 210)">
+            <rect width="190" height="90" rx="8" fill="#1e293b" stroke="#818cf8" stroke-width="1.2" />
+            <text x="15" y="24" font-family="sans-serif" font-size="12" font-weight="700" fill="#818cf8">GitHub Actions</text>
+            <text x="15" y="42" font-family="sans-serif" font-size="9" fill="#f8fafc">Repository Dispatch Event</text>
+            <text x="15" y="60" font-family="monospace" font-size="8" fill="#94a3b8">Cooldown: 3 min throttling</text>
+            <text x="15" y="74" font-family="monospace" font-size="8" fill="#94a3b8">Token: GITHUB_TOKEN</text>
+          </g>
+
+          <g class="node" transform="translate(780, 350)">
+            <rect width="190" height="75" rx="8" fill="#2d151e" stroke="#f87171" stroke-width="1.2" />
+            <text x="15" y="24" font-family="sans-serif" font-size="12" font-weight="700" fill="#f87171">Emergency Alert SMS</text>
+            <text x="15" y="42" font-family="sans-serif" font-size="9" fill="#f8fafc">Sent via FreeMobile SMS</text>
+            <text x="15" y="60" font-family="monospace" font-size="8" fill="#f87171">Prefix: "[WebhookProcessor ERROR]"</text>
+          </g>
+
+          <!-- Connecting Arrows -->
+          <!-- Ingress to Producer -->
+          <path d="M 185 240 L 275 140" fill="none" stroke="#38bdf8" stroke-width="1.8" class="flow-line" marker-end="url(#arrow)" />
+          <!-- Gateway to Registry -->
+          <path d="M 370 170 L 370 210" fill="none" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow)" />
+          <!-- Registry to Pipeline -->
+          <path d="M 465 240 L 505 200" fill="none" stroke="#34d399" stroke-width="1.8" class="flow-line" marker-end="url(#arrow-green)" />
+          <!-- Registry unmatched to Error -->
+          <path d="M 370 280 L 370 335" fill="none" stroke="#f87171" stroke-width="1.8" marker-end="url(#arrow-red)" />
+          <!-- Pipeline to FreeSMS -->
+          <path d="M 685 150 L 780 150" fill="none" stroke="#34d399" stroke-width="1.8" class="flow-line" marker-end="url(#arrow-green)" />
+          <!-- Pipeline to GitHub -->
+          <path d="M 685 220 L 780 240" fill="none" stroke="#818cf8" stroke-width="1.8" class="flow-line" marker-end="url(#arrow)" />
+          <!-- Error to Alert SMS -->
+          <path d="M 685 390 L 780 390" fill="none" stroke="#f87171" stroke-width="1.8" class="flow-line" marker-end="url(#arrow-red)" />
+        </svg>
+      </div>
+
+      <!-- Sequence View (hidden by default) -->
+      <div class="diagram-viewport" id="viewportSequence" style="display: none;">
+        <svg viewBox="0 0 960 480" width="960" height="480" xmlns="http://www.w3.org/2000/svg">
+          <!-- Lifelines -->
+          <g>
+            <rect x="40" y="30" width="120" height="35" rx="6" fill="#1e293b" stroke="#38bdf8" />
+            <text x="100" y="52" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="#f8fafc">Client / Hook</text>
+            <line x1="100" y1="65" x2="100" y2="440" stroke="#334155" stroke-dasharray="4 4" stroke-width="1.5" />
+          </g>
+
+          <g>
+            <rect x="240" y="30" width="160" height="35" rx="6" fill="#1e293b" stroke="#818cf8" />
+            <text x="320" y="52" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="#818cf8">FastAPI (main.py)</text>
+            <line x1="320" y1="65" x2="320" y2="440" stroke="#334155" stroke-dasharray="4 4" stroke-width="1.5" />
+          </g>
+
+          <g>
+            <rect x="480" y="30" width="160" height="35" rx="6" fill="#1e293b" stroke="#34d399" />
+            <text x="560" y="52" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="#34d399">WebhookProcessor</text>
+            <line x1="560" y1="65" x2="560" y2="440" stroke="#334155" stroke-dasharray="4 4" stroke-width="1.5" />
+          </g>
+
+          <g>
+            <rect x="720" y="30" width="180" height="35" rx="6" fill="#1e293b" stroke="#fbbf24" />
+            <text x="810" y="52" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="600" fill="#fbbf24">FreeSMS / GitHub</text>
+            <line x1="810" y1="65" x2="810" y2="440" stroke="#334155" stroke-dasharray="4 4" stroke-width="1.5" />
+          </g>
+
+          <!-- Messages -->
+          <!-- 1. POST -->
+          <line x1="100" y1="100" x2="320" y2="100" stroke="#38bdf8" stroke-width="1.8" marker-end="url(#arrow)" />
+          <text x="210" y="92" text-anchor="middle" font-family="monospace" font-size="10" fill="#38bdf8">POST /webhook (payload JSON)</text>
+
+          <!-- 2. Match -->
+          <line x1="320" y1="140" x2="560" y2="140" stroke="#818cf8" stroke-width="1.8" marker-end="url(#arrow)" />
+          <text x="440" y="132" text-anchor="middle" font-family="monospace" font-size="10" fill="#818cf8">can_handle(payload)?</text>
+
+          <!-- 3. Validate & Run -->
+          <line x1="560" y1="180" x2="560" y2="210" stroke="#34d399" stroke-width="1.8" />
+          <line x1="560" y1="210" x2="590" y2="210" stroke="#34d399" stroke-width="1.8" />
+          <line x1="590" y1="210" x2="590" y2="230" stroke="#34d399" stroke-width="1.8" />
+          <line x1="590" y1="230" x2="560" y2="230" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-green)" />
+          <text x="600" y="222" font-family="monospace" font-size="9" fill="#34d399">model_validate() & process_workflow()</text>
+
+          <!-- 4. Downstream Dispatches -->
+          <line x1="560" y1="270" x2="810" y2="270" stroke="#34d399" stroke-width="1.8" marker-end="url(#arrow-green)" />
+          <text x="685" y="262" text-anchor="middle" font-family="monospace" font-size="10" fill="#34d399">FreeClient.send_sms(SMS_PREFIX + text)</text>
+
+          <line x1="560" y1="310" x2="810" y2="310" stroke="#818cf8" stroke-width="1.8" marker-end="url(#arrow)" />
+          <text x="685" y="302" text-anchor="middle" font-family="monospace" font-size="10" fill="#818cf8">trigger_github_action() [if cooldown met]</text>
+
+          <!-- 5. Return success -->
+          <line x1="560" y1="360" x2="320" y2="360" stroke="#34d399" stroke-dasharray="4 2" stroke-width="1.8" marker-end="url(#arrow-green)" />
+          <text x="440" y="352" text-anchor="middle" font-family="monospace" font-size="10" fill="#34d399">response (JSON / 200 OK)</text>
+
+          <line x1="320" y1="400" x2="100" y2="400" stroke="#34d399" stroke-dasharray="4 2" stroke-width="1.8" marker-end="url(#arrow-green)" />
+          <text x="210" y="392" text-anchor="middle" font-family="monospace" font-size="10" fill="#34d399">200 OK {"status": "success"}</text>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Process Flow Breakdown -->
+    <h3 style="margin-bottom: 1rem; font-size: 1.1rem; color: var(--accent);">Detailed Step-by-Step Execution</h3>
+    <div class="steps-grid">
+      <div class="step-card">
+        <span class="step-num">1</span>
+        <div class="step-title">Ingress & Endpoint Routing</div>
+        <div class="step-desc">
+          FastAPI receives the HTTP request at <code>https://hook2sms.onrender.com</code>.
+          Distinguishes between health probes, verification challenges, and live event webhooks.
+        </div>
+        <div class="step-code">GET /health -> {"status": "ok"}<br>POST /webhook -> parse payload</div>
+      </div>
+
+      <div class="step-card">
+        <span class="step-num">2</span>
+        <div class="step-title">Processor Selection</div>
+        <div class="step-desc">
+          Iterates over registered processors (<code>CalWebhookEvent</code>, <code>NotionWebhookProcessor</code>,
+          <code>GmailWebhookProcessor</code>, <code>SimpleWebhookProcessor</code>) evaluating <code>can_handle(payload)</code>.
+        </div>
+        <div class="step-code">for proc in WEBHOOK_PROCESSORS:<br>  if proc.can_handle(payload): break</div>
+      </div>
+
+      <div class="step-card">
+        <span class="step-num">3</span>
+        <div class="step-title">Validation & Decision</div>
+        <div class="step-desc">
+          Pydantic validates input attributes and triggers <code>should_enable_workflow(payload)</code>.
+          Formats outgoing SMS content with <code>SMS_PREFIX = "Hook2SMS service : \n"</code>.
+        </div>
+        <div class="step-code">processor.model_validate(payload)<br>processor.process_workflow()</div>
+      </div>
+
+      <div class="step-card">
+        <span class="step-num">4</span>
+        <div class="step-title">Downstream Dispatch & Alerts</div>
+        <div class="step-desc">
+          Sends FreeSMS message and triggers GitHub Actions if configured. If errors occur or no processor matches,
+          <code>notify_error()</code> sends a failure alert with a 60s cooldown cache.
+        </div>
+        <div class="step-code">send_sms() & trigger_github_action()<br>notify_error(context="POST /webhook")</div>
+      </div>
+    </div>
+
+    <!-- API Reference Table -->
+    <div class="inspector-panel">
+      <div class="inspector-title">
+        <span>📋</span> Service Endpoint Reference & Target Contracts
+      </div>
+      <table class="info-table">
+        <thead>
+          <tr>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Full URL</th>
+            <th>Function</th>
+            <th>Response Contract</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong style="color: var(--accent);">GET</strong></td>
+            <td class="mono">/</td>
+            <td class="mono">https://hook2sms.onrender.com/</td>
+            <td>root()</td>
+            <td class="mono">{"service": "...", "url": "...", "endpoints": {...}}</td>
+          </tr>
+          <tr>
+            <td><strong style="color: var(--accent);">GET</strong></td>
+            <td class="mono">/health</td>
+            <td class="mono">https://hook2sms.onrender.com/health</td>
+            <td>healthcheck()</td>
+            <td class="mono">{"status": "ok"} (HTTP 200)</td>
+          </tr>
+          <tr>
+            <td><strong style="color: var(--accent);">GET</strong></td>
+            <td class="mono">/webhook</td>
+            <td class="mono">https://hook2sms.onrender.com/webhook</td>
+            <td>webhook_verification()</td>
+            <td class="mono">processor challenge response or HTTP 400</td>
+          </tr>
+          <tr>
+            <td><strong style="color: var(--success);">POST</strong></td>
+            <td class="mono">/webhook</td>
+            <td class="mono">https://hook2sms.onrender.com/webhook</td>
+            <td>webhook_listener()</td>
+            <td class="mono">Processor response (HTTP 200) or error alert (HTTP 400/500)</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer>
+    WebhookProcessor Process Specification & Architecture &bull; Base URL: 
+    <a href="https://hook2sms.onrender.com" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: none;">
+      https://hook2sms.onrender.com
+    </a> &bull; Generated via Archify
+  </footer>
+
+  <script>
+    function toggleTheme() {
+      const body = document.body;
+      const current = body.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      body.setAttribute('data-theme', next);
+    }
+
+    function switchView(view) {
+      const flow = document.getElementById('viewportFlow');
+      const seq = document.getElementById('viewportSequence');
+      const buttons = document.querySelectorAll('.tab-btn');
+
+      if (view === 'flow') {
+        flow.style.display = 'flex';
+        seq.style.display = 'none';
+        buttons[0].classList.add('active');
+        buttons[1].classList.remove('active');
+      } else {
+        flow.style.display = 'none';
+        seq.style.display = 'flex';
+        buttons[0].classList.remove('active');
+        buttons[1].classList.add('active');
+      }
+    }
+  </script>
+</body>
+</html>

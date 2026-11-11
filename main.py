@@ -1,3 +1,11 @@
+"""
+WebhookProcessor Application
+
+Production URL: https://hook2sms.onrender.com
+Webhook Endpoint: https://hook2sms.onrender.com/webhook
+Healthcheck Endpoint: https://hook2sms.onrender.com/health
+"""
+
 import logging
 import os
 
@@ -6,6 +14,8 @@ from fastapi import FastAPI, Request, Response, status
 from app.error_notifier import notify_error
 from app.registry import WEBHOOK_PROCESSORS
 
+WEBHOOK_BASE_URL = os.getenv("WEBHOOK_BASE_URL", "https://hook2sms.onrender.com")
+
 # Logging setup
 logging.basicConfig(
     level=logging.DEBUG,
@@ -13,7 +23,11 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI()
+app = FastAPI(
+    title="WebhookProcessor",
+    description="Webhook listener and SMS notification service hosted at https://hook2sms.onrender.com",
+    servers=[{"url": WEBHOOK_BASE_URL, "description": "Production Webhook Service"}],
+)
 
 
 @app.exception_handler(Exception)
@@ -33,6 +47,19 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         media_type="application/json",
     )
+
+
+# Root endpoint providing context and available endpoints
+@app.get("/")
+async def root():
+    return {
+        "service": "WebhookProcessor",
+        "url": WEBHOOK_BASE_URL,
+        "endpoints": {
+            "health": f"{WEBHOOK_BASE_URL}/health",
+            "webhook": f"{WEBHOOK_BASE_URL}/webhook",
+        },
+    }
 
 
 # Healthcheck endpoint
@@ -118,7 +145,7 @@ if __name__ == "__main__":
     import uvicorn
 
     port = int(os.getenv("PORT", 10000))
-    logger.info(f"Starting server on port {port}")
+    logger.info(f"Starting server on port {port} (Webhook URL: {WEBHOOK_BASE_URL})")
     uvicorn.run(
         "main:app",
         host="0.0.0.0",

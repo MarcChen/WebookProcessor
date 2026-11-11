@@ -8,8 +8,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 from fastapi import status
 
 from main import (
+    WEBHOOK_BASE_URL,
     global_exception_handler,
     healthcheck,
+    root,
     webhook_listener,
     webhook_verification,
 )
@@ -29,6 +31,17 @@ class TestMainEndpoints(unittest.IsolatedAsyncioTestCase):
 
     def tearDown(self):
         self.env_patcher.stop()
+
+    async def test_root(self):
+        result = await root()
+        self.assertEqual(result["service"], "WebhookProcessor")
+        self.assertEqual(result["url"], WEBHOOK_BASE_URL)
+        self.assertEqual(
+            result["endpoints"]["webhook"], f"{WEBHOOK_BASE_URL}/webhook"
+        )
+        self.assertEqual(
+            result["endpoints"]["health"], f"{WEBHOOK_BASE_URL}/health"
+        )
 
     async def test_healthcheck(self):
         result = await healthcheck()
