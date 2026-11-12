@@ -9,7 +9,6 @@ from starlette.concurrency import run_in_threadpool
 from app.error_notifier import notify_error
 from app.notion_handler import NotionWebhookProcessor
 from app.registry import WEBHOOK_PROCESSORS
-from app.sinomerite_handler import router as sinomerite_router
 
 # Logging setup
 logging.basicConfig(
@@ -19,7 +18,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-app.include_router(sinomerite_router)
 
 
 @app.exception_handler(Exception)
